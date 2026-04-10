@@ -38,6 +38,7 @@ const Index: React.FC = () => {
   const [crossfadeDuration, setCrossfadeDuration] = useState(3);
   const [isEnhanced, setIsEnhanced] = useState(false);
   const [dragTrack, setDragTrack] = useState<Track | null>(null);
+  const dragTrackRef = useRef<Track | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [dragPosition, setDragPosition] = useState<'above' | 'below' | null>(null);
   const [cpanel, setCpanel] = useState<CommandPanelState>({ open: false, title: '', phase: 'building' });
@@ -52,8 +53,8 @@ const Index: React.FC = () => {
   const curAudioRef = useRef<HTMLAudioElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
 
-  // Sorted tracks
-  const sorted = sortTracksByPrefix(tracks);
+  // Use tracks directly — sorting happens at load time only
+  const sorted = tracks;
 
   // Video handling
   const handleVideoLoad = useCallback((file: File) => {
@@ -80,13 +81,16 @@ const Index: React.FC = () => {
     setVideoUrl(null);
   }, []);
 
-  // Track loading
+  // Track loading — sort by prefix at load time
   const handleLoadTracks = useCallback((files: FileList) => {
-    Array.from(files).forEach(file => {
+    const newTracks: Track[] = [];
+    let loaded = 0;
+    const fileArr = Array.from(files);
+    fileArr.forEach(file => {
       const url = URL.createObjectURL(file);
       const a = new Audio(url);
       a.onloadedmetadata = () => {
-        setTracks(prev => [...prev, {
+        newTracks.push({
           id: Math.random().toString(36).slice(2),
           name: cleanName(file.name),
           raw: file.name,
@@ -95,7 +99,13 @@ const Index: React.FC = () => {
           dur: a.duration,
           url,
           file,
-        }]);
+        });
+        loaded++;
+        if (loaded === fileArr.length) {
+          // Sort new batch by prefix, then append
+          const sortedNew = sortTracksByPrefix(newTracks);
+          setTracks(prev => [...prev, ...sortedNew]);
+        }
       };
     });
   }, []);
@@ -184,21 +194,26 @@ const Index: React.FC = () => {
   }, []);
 
   // Drag and drop
-  const handleDragStart = useCallback((track: Track) => setDragTrack(track), []);
+  const handleDragStart = useCallback((track: Track) => {
+    setDragTrack(track);
+    dragTrackRef.current = track;
+  }, []);
   const handleDragEnd = useCallback(() => {
     setDragTrack(null);
+    dragTrackRef.current = null;
     setDragOverId(null);
     setDragPosition(null);
   }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent, track: Track) => {
     e.preventDefault();
-    if (!dragTrack || dragTrack.id === track.id) return;
+    const dt = dragTrackRef.current;
+    if (!dt || dt.id === track.id) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const mid = rect.top + rect.height / 2;
     setDragOverId(track.id);
     setDragPosition(e.clientY < mid ? 'above' : 'below');
-  }, [dragTrack]);
+  }, []);
 
   const handleDragLeave = useCallback(() => {
     setDragOverId(null);
@@ -207,24 +222,26 @@ const Index: React.FC = () => {
 
   const handleDrop = useCallback((e: React.DragEvent, target: Track) => {
     e.preventDefault();
-    if (!dragTrack || dragTrack.id === target.id) return;
+    const dt = dragTrackRef.current;
+    if (!dt || dt.id === target.id) return;
 
     const rect = e.currentTarget.getBoundingClientRect();
     const mid = rect.top + rect.height / 2;
     const before = e.clientY < mid;
 
     setTracks(prev => {
-      const without = prev.filter(t => t.id !== dragTrack.id);
+      const without = prev.filter(t => t.id !== dt.id);
       const destIdx = without.findIndex(t => t.id === target.id);
       const insertAt = before ? destIdx : destIdx + 1;
-      without.splice(insertAt, 0, dragTrack);
+      without.splice(insertAt, 0, dt);
       return [...without];
     });
 
     setDragTrack(null);
+    dragTrackRef.current = null;
     setDragOverId(null);
     setDragPosition(null);
-  }, [dragTrack]);
+  }, []);
 
   // YouTube enhance
   const handleEnhance = useCallback(() => {

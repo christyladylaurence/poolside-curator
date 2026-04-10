@@ -28,6 +28,7 @@ const TrackItem: React.FC<TrackItemProps> = ({
 }) => {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(track.name);
+  const [isDragging, setIsDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const startEdit = useCallback((e: React.MouseEvent) => {
@@ -52,10 +53,10 @@ const TrackItem: React.FC<TrackItemProps> = ({
 
   return (
     <div
-      className={`track ${isPlaying ? 'playing' : ''} ${dropClass}`}
+      className={`track ${isPlaying ? 'playing' : ''} ${isDragging ? 'dragging' : ''} ${dropClass}`}
       draggable
-      onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; onDragStart(); }}
-      onDragEnd={onDragEnd}
+      onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; setIsDragging(true); onDragStart(); }}
+      onDragEnd={() => { setIsDragging(false); onDragEnd(); }}
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
