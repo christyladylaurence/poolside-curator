@@ -65,6 +65,17 @@ const Index: React.FC = () => {
     }
   }, [isDemo]);
 
+  // Prevent browser from opening dropped files anywhere on the page
+  useEffect(() => {
+    const prevent = (e: DragEvent) => { e.preventDefault(); e.stopPropagation(); };
+    window.addEventListener('dragover', prevent);
+    window.addEventListener('drop', prevent);
+    return () => {
+      window.removeEventListener('dragover', prevent);
+      window.removeEventListener('drop', prevent);
+    };
+  }, []);
+
   const curAudioRef = useRef<HTMLAudioElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
 
