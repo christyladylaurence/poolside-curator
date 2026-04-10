@@ -207,17 +207,27 @@ const Index: React.FC = () => {
 
   const handleDragOver = useCallback((e: React.DragEvent, track: Track) => {
     e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
     const dt = dragTrackRef.current;
-    if (!dt || dt.id === track.id) return;
-    const rect = e.currentTarget.getBoundingClientRect();
+    if (!dt || dt.id === track.id) {
+      setDragOverId(null);
+      setDragPosition(null);
+      return;
+    }
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const mid = rect.top + rect.height / 2;
     setDragOverId(track.id);
     setDragPosition(e.clientY < mid ? 'above' : 'below');
   }, []);
 
-  const handleDragLeave = useCallback(() => {
-    setDragOverId(null);
-    setDragPosition(null);
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    // Only clear if we're actually leaving the track element, not entering a child
+    const related = e.relatedTarget as Node | null;
+    const current = e.currentTarget as HTMLElement;
+    if (!related || !current.contains(related)) {
+      setDragOverId(null);
+      setDragPosition(null);
+    }
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent, target: Track) => {
@@ -225,7 +235,7 @@ const Index: React.FC = () => {
     const dt = dragTrackRef.current;
     if (!dt || dt.id === target.id) return;
 
-    const rect = e.currentTarget.getBoundingClientRect();
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const mid = rect.top + rect.height / 2;
     const before = e.clientY < mid;
 
