@@ -246,6 +246,12 @@ const Index: React.FC = () => {
     ));
   }, []);
 
+  const handleToggleChecked = useCallback((id: string) => {
+    setTracks(prev => prev.map(t =>
+      t.id === id ? { ...t, checked: !t.checked } : t
+    ));
+  }, []);
+
   // Reorder tracks (from dnd-kit)
   const handleReorder = useCallback((newTracks: Track[]) => {
     setTracks(newTracks);
@@ -512,6 +518,7 @@ const Index: React.FC = () => {
           onRename={handleRename}
           onScrub={handleScrub}
           onToggleCutoff={handleToggleCutoff}
+          onToggleChecked={handleToggleChecked}
           onReorder={handleReorder}
           onLoadTracks={handleLoadTracks}
         />
