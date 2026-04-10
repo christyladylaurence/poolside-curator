@@ -37,10 +37,6 @@ const Index: React.FC = () => {
   const [scrubPercents, setScrubPercents] = useState<Record<string, number>>({});
   const [crossfadeDuration, setCrossfadeDuration] = useState(3);
   const [isEnhanced, setIsEnhanced] = useState(false);
-  const [dragTrack, setDragTrack] = useState<Track | null>(null);
-  const dragTrackRef = useRef<Track | null>(null);
-  const [dragOverId, setDragOverId] = useState<string | null>(null);
-  const [dragPosition, setDragPosition] = useState<'above' | 'below' | null>(null);
   const [cpanel, setCpanel] = useState<CommandPanelState>({ open: false, title: '', phase: 'building' });
 
   useEffect(() => {
