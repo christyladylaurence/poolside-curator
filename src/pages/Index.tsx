@@ -40,6 +40,24 @@ const Index: React.FC = () => {
   const [isEnhanced, setIsEnhanced] = useState(false);
   const [cpanel, setCpanel] = useState<CommandPanelState>({ open: false, title: '', phase: 'building' });
 
+  // Restore video from IndexedDB on mount
+  useEffect(() => {
+    loadVideo().then(file => {
+      if (file) {
+        setVideoFile(file);
+        const url = URL.createObjectURL(file);
+        setVideoUrl(url);
+        setShowDrop(false);
+        setVideoSkipped(false);
+        const v = document.createElement('video');
+        v.src = url;
+        v.onloadedmetadata = () => {
+          setVideoRes({ w: v.videoWidth, h: v.videoHeight, label: getResLabel(v.videoWidth, v.videoHeight) });
+        };
+      }
+    });
+  }, []);
+
   useEffect(() => {
     if (isDemo && tracks.length === 0) {
       const dummyFile = new File([], 'demo.mp3', { type: 'audio/mpeg' });
@@ -60,6 +78,7 @@ const Index: React.FC = () => {
     setVideoUrl(url);
     setShowDrop(false);
     setVideoSkipped(false);
+    saveVideo(file); // persist to IndexedDB
 
     const v = document.createElement('video');
     v.src = url;
