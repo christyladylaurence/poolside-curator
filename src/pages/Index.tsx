@@ -81,7 +81,8 @@ const Index: React.FC = () => {
   const handleLoadTracks = useCallback((files: FileList) => {
     const newTracks: Track[] = [];
     let loaded = 0;
-    const fileArr = Array.from(files);
+    const fileArr = Array.from(files).filter(f => f.type.startsWith('audio/') || /\.(mp3|wav|ogg|flac|aac|m4a|wma|aiff?)$/i.test(f.name));
+    if (!fileArr.length) return;
     fileArr.forEach(file => {
       const url = URL.createObjectURL(file);
       const a = new Audio(url);
