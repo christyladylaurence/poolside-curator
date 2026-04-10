@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import BackgroundVideo from '@/components/BackgroundVideo';
 import VideoDropScreen from '@/components/VideoDropScreen';
 import AppHeader from '@/components/AppHeader';
@@ -11,14 +11,27 @@ import {
   fmt, fmtSRT, getResLabel, sortTracksByPrefix, getRotatingSuffix, createWAVFile,
 } from '@/lib/audio-utils';
 
+const DEMO_TRACKS: Omit<Track, 'url' | 'file'>[] = [
+  { id: 'demo-1', name: 'Golden Hour Drift', raw: '01-dh-golden-hour-drift.mp3', genre: 'dh', date: '2025-06-12', dur: 245, originalName: null },
+  { id: 'demo-2', name: 'Midnight Pool', raw: '02-dh-midnight-pool.mp3', genre: 'dh', date: '2025-06-12', dur: 312, originalName: null },
+  { id: 'demo-3', name: 'Soft Focus', raw: '03-lf-soft-focus.mp3', genre: 'lf', date: '2025-06-14', dur: 198, originalName: null },
+  { id: 'demo-4', name: 'Palm Shade', raw: '04-dh-palm-shade.mp3', genre: 'dh', date: '2025-06-14', dur: 276, originalName: null },
+  { id: 'demo-5', name: 'Coral Reef Sunset', raw: '05-hy-coral-reef-sunset.mp3', genre: 'hy', date: '2025-06-15', dur: 340, originalName: null },
+  { id: 'demo-6', name: 'Lazy Afternoon Tape', raw: '06-lf-lazy-afternoon-tape.mp3', genre: 'lf', date: '2025-06-15', dur: 224, originalName: null },
+  { id: 'demo-7', name: 'Terrace Lights', raw: '07-dh-terrace-lights.mp3', genre: 'dh', date: '2025-06-16', dur: 289, originalName: null },
+  { id: 'demo-8', name: 'Vapor Cascade', raw: '08-hy-vapor-cascade.mp3', genre: 'hy', date: '2025-06-16', dur: 261, originalName: null },
+];
+
 const Index: React.FC = () => {
+  const isDemo = new URLSearchParams(window.location.search).has('demo');
+
   const [tracks, setTracks] = useState<Track[]>([]);
   const [filter, setFilter] = useState('all');
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoRes, setVideoRes] = useState<{ w: number; h: number; label: string } | null>(null);
-  const [showDrop, setShowDrop] = useState(true);
-  const [videoSkipped, setVideoSkipped] = useState(false);
+  const [showDrop, setShowDrop] = useState(!isDemo);
+  const [videoSkipped, setVideoSkipped] = useState(isDemo);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [nowPlaying, setNowPlaying] = useState<string | null>(null);
   const [scrubPercents, setScrubPercents] = useState<Record<string, number>>({});
@@ -28,6 +41,13 @@ const Index: React.FC = () => {
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [dragPosition, setDragPosition] = useState<'above' | 'below' | null>(null);
   const [cpanel, setCpanel] = useState<CommandPanelState>({ open: false, title: '', phase: 'building' });
+
+  useEffect(() => {
+    if (isDemo && tracks.length === 0) {
+      const dummyFile = new File([], 'demo.mp3', { type: 'audio/mpeg' });
+      setTracks(DEMO_TRACKS.map(t => ({ ...t, url: '', file: dummyFile } as Track)));
+    }
+  }, [isDemo]);
 
   const curAudioRef = useRef<HTMLAudioElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
