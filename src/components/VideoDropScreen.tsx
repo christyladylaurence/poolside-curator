@@ -4,9 +4,10 @@ interface VideoDropScreenProps {
   visible: boolean;
   onVideoLoad: (file: File) => void;
   onSkip: () => void;
+  onLoadDemo?: () => void;
 }
 
-const VideoDropScreen: React.FC<VideoDropScreenProps> = ({ visible, onVideoLoad, onSkip }) => {
+const VideoDropScreen: React.FC<VideoDropScreenProps> = ({ visible, onVideoLoad, onSkip, onLoadDemo }) => {
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
 
@@ -40,6 +41,15 @@ const VideoDropScreen: React.FC<VideoDropScreenProps> = ({ visible, onVideoLoad,
       <button className="skip-link" onClick={onSkip}>
         Skip for now — no video yet
       </button>
+      {onLoadDemo && (
+        <button
+          className="skip-link"
+          onClick={onLoadDemo}
+          style={{ marginTop: 4, color: 'var(--dh)' }}
+        >
+          ♫ Load demo tracks & skip
+        </button>
+      )}
       <input
         ref={fileRef}
         type="file"
