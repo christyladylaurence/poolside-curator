@@ -336,6 +336,30 @@
   flex-direction: column;
   gap: 2px;
   min-height: 80px;
+  position: relative;
+  transition: outline 0.15s ease;
+}
+
+.tlist.file-drag-over {
+  outline: 2px dashed var(--dh);
+  outline-offset: -2px;
+  border-radius: 8px;
+  background: rgba(90, 175, 200, 0.04);
+}
+
+.file-drop-indicator {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 10, 10, 0.7);
+  color: var(--dh);
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 10;
 }
 
 .empty-state {

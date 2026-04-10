@@ -477,6 +477,7 @@ const Index: React.FC = () => {
           onRename={handleRename}
           onScrub={handleScrub}
           onReorder={handleReorder}
+          onLoadTracks={handleLoadTracks}
         />
       </div>
 
