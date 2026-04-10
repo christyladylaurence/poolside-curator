@@ -222,6 +222,12 @@ const Index: React.FC = () => {
     ));
   }, []);
 
+  const handleToggleCutoff = useCallback((id: string) => {
+    setTracks(prev => prev.map(t =>
+      t.id === id ? { ...t, cutoff: !t.cutoff } : t
+    ));
+  }, []);
+
   // Reorder tracks (from dnd-kit)
   const handleReorder = useCallback((newTracks: Track[]) => {
     setTracks(newTracks);
@@ -487,6 +493,7 @@ const Index: React.FC = () => {
           onGenreCycle={handleGenreCycle}
           onRename={handleRename}
           onScrub={handleScrub}
+          onToggleCutoff={handleToggleCutoff}
           onReorder={handleReorder}
           onLoadTracks={handleLoadTracks}
         />
