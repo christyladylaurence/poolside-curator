@@ -6,6 +6,7 @@ import FilterBar from '@/components/FilterBar';
 import TrackList from '@/components/TrackList';
 import FooterBar from '@/components/FooterBar';
 import CommandPanel, { CommandPanelState } from '@/components/CommandPanel';
+import { saveVideo, loadVideo, clearVideo } from '@/lib/video-store';
 import {
   Track, Genre, cleanName, cleanNameForYouTube, detectGenre, dateOf,
   fmt, fmtSRT, getResLabel, sortTracksByPrefix, getRotatingSuffix, createWAVFile,
