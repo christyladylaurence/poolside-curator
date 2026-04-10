@@ -74,10 +74,10 @@ const TrackList: React.FC<TrackListProps> = ({
   const itemIds = useMemo(() => visible.map(t => t.id), [visible]);
 
   const handleFileDrop = React.useCallback((e: React.DragEvent) => {
-    // Only handle file drops, not dnd-kit reorder drags
+    e.preventDefault();
+    e.stopPropagation();
+    setFileDragOver(false);
     if (e.dataTransfer.files?.length > 0) {
-      e.preventDefault();
-      setFileDragOver(false);
       onLoadTracks(e.dataTransfer.files);
     }
   }, [onLoadTracks]);
