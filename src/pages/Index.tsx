@@ -52,8 +52,8 @@ const Index: React.FC = () => {
   const curAudioRef = useRef<HTMLAudioElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
 
-  // Sorted tracks
-  const sorted = sortTracksByPrefix(tracks);
+  // Use tracks directly — sorting happens at load time only
+  const sorted = tracks;
 
   // Video handling
   const handleVideoLoad = useCallback((file: File) => {
@@ -80,13 +80,16 @@ const Index: React.FC = () => {
     setVideoUrl(null);
   }, []);
 
-  // Track loading
+  // Track loading — sort by prefix at load time
   const handleLoadTracks = useCallback((files: FileList) => {
-    Array.from(files).forEach(file => {
+    const newTracks: Track[] = [];
+    let loaded = 0;
+    const fileArr = Array.from(files);
+    fileArr.forEach(file => {
       const url = URL.createObjectURL(file);
       const a = new Audio(url);
       a.onloadedmetadata = () => {
-        setTracks(prev => [...prev, {
+        newTracks.push({
           id: Math.random().toString(36).slice(2),
           name: cleanName(file.name),
           raw: file.name,
@@ -95,7 +98,13 @@ const Index: React.FC = () => {
           dur: a.duration,
           url,
           file,
-        }]);
+        });
+        loaded++;
+        if (loaded === fileArr.length) {
+          // Sort new batch by prefix, then append
+          const sortedNew = sortTracksByPrefix(newTracks);
+          setTracks(prev => [...prev, ...sortedNew]);
+        }
       };
     });
   }, []);
