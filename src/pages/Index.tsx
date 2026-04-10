@@ -165,6 +165,7 @@ const Index: React.FC = () => {
       setNowPlaying(null);
       setScrubPercents({});
       setIsEnhanced(false);
+      clearTracks();
     }
   }, [tracks.length]);
 
