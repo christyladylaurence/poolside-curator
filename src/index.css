@@ -372,6 +372,17 @@
   color: hsl(var(--text-muted));
 }
 
+/* Track row — track + cutoff button side by side */
+.track-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+.track-row .track {
+  flex: 1;
+  min-width: 0;
+}
+
 /* Track item */
 .track {
   display: flex;
@@ -574,34 +585,42 @@
   border-color: rgba(176,96,96,0.3);
 }
 
-.cutoff-btn {
-  width: 20px;
-  height: 20px;
-  border-radius: 2px;
+/* Cutoff side button — outside the track box */
+.cutoff-side-btn {
+  width: 36px;
+  flex-shrink: 0;
   border: 1px solid transparent;
+  border-left: none;
+  border-radius: 0 4px 4px 0;
   background: transparent;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
   transition: all 0.15s;
-  font-size: 11px;
+  font-size: 16px;
   color: hsl(var(--text-muted));
-  opacity: 0.3;
+  opacity: 0.35;
 }
-.track:hover .cutoff-btn {
+.track-row:hover .cutoff-side-btn {
   opacity: 0.6;
+  border-color: var(--border-custom);
+  background: var(--surface);
 }
-.cutoff-btn:hover {
+.cutoff-side-btn:hover {
   opacity: 1 !important;
-  color: hsl(var(--accent-gold));
+  color: hsl(var(--amber));
+  background: var(--amber-glow) !important;
+  border-color: var(--amber-dim) !important;
 }
-.cutoff-btn.active {
+.cutoff-side-btn.active {
   opacity: 1 !important;
-  color: hsl(var(--accent-gold));
-  background: hsla(var(--accent-gold) / 0.15);
-  border-color: hsla(var(--accent-gold) / 0.3);
+  color: hsl(var(--amber));
+  background: var(--amber-glow);
+  border-color: rgba(200,137,58,0.3);
+}
+.track-row.cutoff-active .track {
+  border-color: rgba(200,137,58,0.25);
 }
 
 /* Scrub bar */

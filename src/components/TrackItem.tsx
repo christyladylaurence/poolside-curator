@@ -51,57 +51,59 @@ const TrackItem: React.FC<TrackItemProps> = ({
     <div
       {...(sortableProps || {})}
       ref={sortableProps?.ref}
-      className={`track ${isPlaying ? 'playing' : ''} ${isOverlay ? 'drag-overlay' : ''}`}
+      className={`track-row ${track.cutoff ? 'cutoff-active' : ''}`}
     >
-      <div className="track-main">
-        <div className="tnum">{displayNum}.</div>
-        <div className="handle" style={{ cursor: 'grab', touchAction: 'none' }}>⠿</div>
-        <button className="pbtn" onClick={e => { e.stopPropagation(); onPlay(); }}>
-          {isPlaying ? '⏸' : '▶'}
-        </button>
-        <div className="tinfo">
-          {editing ? (
-            <input
-              ref={inputRef}
-              className="tname-input"
-              value={editValue}
-              onChange={e => setEditValue(e.target.value)}
-              onBlur={commitEdit}
-              onKeyDown={e => {
-                if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-                if (e.key === 'Escape') { setEditValue(track.name); setEditing(false); }
-              }}
-              autoFocus
-              onClick={e => e.stopPropagation()}
-            />
-          ) : (
-            <div className="tname" onClick={startEdit}>{track.name}</div>
-          )}
-          <div className="tmeta">{track.date || track.genre.toUpperCase()}</div>
+      <div className={`track ${isPlaying ? 'playing' : ''} ${isOverlay ? 'drag-overlay' : ''}`}>
+        <div className="track-main">
+          <div className="tnum">{displayNum}.</div>
+          <div className="handle" style={{ cursor: 'grab', touchAction: 'none' }}>⠿</div>
+          <button className="pbtn" onClick={e => { e.stopPropagation(); onPlay(); }}>
+            {isPlaying ? '⏸' : '▶'}
+          </button>
+          <div className="tinfo">
+            {editing ? (
+              <input
+                ref={inputRef}
+                className="tname-input"
+                value={editValue}
+                onChange={e => setEditValue(e.target.value)}
+                onBlur={commitEdit}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                  if (e.key === 'Escape') { setEditValue(track.name); setEditing(false); }
+                }}
+                autoFocus
+                onClick={e => e.stopPropagation()}
+              />
+            ) : (
+              <div className="tname" onClick={startEdit}>{track.name}</div>
+            )}
+            <div className="tmeta">{track.date || track.genre.toUpperCase()}</div>
+          </div>
+          <div className="vis">
+            {[0, 1, 2, 3, 4].map(i => <div key={i} className="vb" />)}
+          </div>
+          <div
+            className={`gpip ${track.genre}`}
+            title={`Click to change genre: ${genreLabels[track.genre]}`}
+            onClick={e => { e.stopPropagation(); onGenreCycle(); }}
+          />
+          <div className="tdur">{fmt(track.dur)}</div>
+          <button className="del-btn" onClick={e => { e.stopPropagation(); onDelete(); }} title="Remove track">
+            ✕
+          </button>
         </div>
-        <div className="vis">
-          {[0, 1, 2, 3, 4].map(i => <div key={i} className="vb" />)}
+        <div className="scrub-bar-container" onClick={handleScrubClick}>
+          <div className="scrub-bar-fill" style={{ width: `${scrubPercent}%` }} />
         </div>
-        <div
-          className={`gpip ${track.genre}`}
-          title={`Click to change genre: ${genreLabels[track.genre]}`}
-          onClick={e => { e.stopPropagation(); onGenreCycle(); }}
-        />
-        <div className="tdur">{fmt(track.dur)}</div>
-        <button
-          className={`cutoff-btn ${track.cutoff ? 'active' : ''}`}
-          onClick={e => { e.stopPropagation(); onToggleCutoff(); }}
-          title={track.cutoff ? 'Marked as cut off — click to clear' : 'Mark as cut off'}
-        >
-          ✂
-        </button>
-        <button className="del-btn" onClick={e => { e.stopPropagation(); onDelete(); }} title="Remove track">
-          ✕
-        </button>
       </div>
-      <div className="scrub-bar-container" onClick={handleScrubClick}>
-        <div className="scrub-bar-fill" style={{ width: `${scrubPercent}%` }} />
-      </div>
+      <button
+        className={`cutoff-side-btn ${track.cutoff ? 'active' : ''}`}
+        onClick={e => { e.stopPropagation(); onToggleCutoff(); }}
+        title={track.cutoff ? 'Marked as cut off — click to clear' : 'Mark as cut off'}
+      >
+        ✂
+      </button>
     </div>
   );
 };
