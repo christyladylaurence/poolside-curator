@@ -11,6 +11,7 @@ export interface TrackItemProps {
   onGenreCycle: () => void;
   onRename: (newName: string) => void;
   onScrub: (pct: number) => void;
+  onToggleCutoff: () => void;
   isOverlay?: boolean;
   sortableProps?: Record<string, any>;
 }
