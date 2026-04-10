@@ -35,8 +35,9 @@ interface TrackListProps {
 
 const TrackList: React.FC<TrackListProps> = ({
   tracks, allTracks, filter, playingId, scrubPercents,
-  onPlay, onDelete, onGenreCycle, onRename, onScrub, onReorder,
+  onPlay, onDelete, onGenreCycle, onRename, onScrub, onReorder, onLoadTracks,
 }) => {
+  const [fileDragOver, setFileDragOver] = React.useState(false);
   const visible = useMemo(
     () => tracks.filter(t => filter === 'all' || t.genre === filter),
     [tracks, filter]
