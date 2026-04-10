@@ -56,6 +56,12 @@ const Index: React.FC = () => {
         };
       }
     });
+    // Restore tracks from IndexedDB on mount
+    loadTracks().then(loaded => {
+      if (loaded?.length) {
+        setTracks(loaded as Track[]);
+      }
+    });
   }, []);
 
   useEffect(() => {
