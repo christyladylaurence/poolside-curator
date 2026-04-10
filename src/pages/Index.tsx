@@ -446,7 +446,17 @@ const Index: React.FC = () => {
   return (
     <>
       <BackgroundVideo videoUrl={videoUrl} />
-      <VideoDropScreen visible={showDrop} onVideoLoad={handleVideoLoad} onSkip={handleSkip} />
+      <VideoDropScreen
+        visible={showDrop}
+        onVideoLoad={handleVideoLoad}
+        onSkip={handleSkip}
+        onLoadDemo={() => {
+          const dummyFile = new File([], 'demo.mp3', { type: 'audio/mpeg' });
+          setTracks(DEMO_TRACKS.map(t => ({ ...t, url: '', file: dummyFile } as Track)));
+          setShowDrop(false);
+          setVideoSkipped(true);
+        }}
+      />
 
       <div className="app-container">
         <AppHeader
