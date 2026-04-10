@@ -1,16 +1,487 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import React, { useState, useRef, useCallback } from 'react';
+import BackgroundVideo from '@/components/BackgroundVideo';
+import VideoDropScreen from '@/components/VideoDropScreen';
+import AppHeader from '@/components/AppHeader';
+import FilterBar from '@/components/FilterBar';
+import TrackList from '@/components/TrackList';
+import FooterBar from '@/components/FooterBar';
+import CommandPanel, { CommandPanelState } from '@/components/CommandPanel';
+import {
+  Track, Genre, cleanName, cleanNameForYouTube, detectGenre, dateOf,
+  fmt, fmtSRT, getResLabel, sortTracksByPrefix, getRotatingSuffix, createWAVFile,
+} from '@/lib/audio-utils';
 
-// IMPORTANT: Fully REPLACE this with your own code
-const PlaceholderIndex = () => {
-  // PLACEHOLDER: Replace this entire return statement with the user's app.
-  // The inline background color is intentionally not part of the design system.
+const Index: React.FC = () => {
+  const [tracks, setTracks] = useState<Track[]>([]);
+  const [filter, setFilter] = useState('all');
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoRes, setVideoRes] = useState<{ w: number; h: number; label: string } | null>(null);
+  const [showDrop, setShowDrop] = useState(true);
+  const [videoSkipped, setVideoSkipped] = useState(false);
+  const [playingId, setPlayingId] = useState<string | null>(null);
+  const [nowPlaying, setNowPlaying] = useState<string | null>(null);
+  const [scrubPercents, setScrubPercents] = useState<Record<string, number>>({});
+  const [crossfadeDuration, setCrossfadeDuration] = useState(3);
+  const [isEnhanced, setIsEnhanced] = useState(false);
+  const [dragTrack, setDragTrack] = useState<Track | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [dragPosition, setDragPosition] = useState<'above' | 'below' | null>(null);
+  const [cpanel, setCpanel] = useState<CommandPanelState>({ open: false, title: '', phase: 'building' });
+
+  const curAudioRef = useRef<HTMLAudioElement | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+
+  // Sorted tracks
+  const sorted = sortTracksByPrefix(tracks);
+
+  // Video handling
+  const handleVideoLoad = useCallback((file: File) => {
+    setVideoFile(file);
+    const url = URL.createObjectURL(file);
+    setVideoUrl(url);
+    setShowDrop(false);
+    setVideoSkipped(false);
+
+    const v = document.createElement('video');
+    v.src = url;
+    v.onloadedmetadata = () => {
+      setVideoRes({ w: v.videoWidth, h: v.videoHeight, label: getResLabel(v.videoWidth, v.videoHeight) });
+    };
+  }, []);
+
+  const handleSkip = useCallback(() => {
+    setShowDrop(false);
+    setVideoSkipped(true);
+  }, []);
+
+  const handleChangeVideo = useCallback(() => {
+    setShowDrop(true);
+    setVideoUrl(null);
+  }, []);
+
+  // Track loading
+  const handleLoadTracks = useCallback((files: FileList) => {
+    Array.from(files).forEach(file => {
+      const url = URL.createObjectURL(file);
+      const a = new Audio(url);
+      a.onloadedmetadata = () => {
+        setTracks(prev => [...prev, {
+          id: Math.random().toString(36).slice(2),
+          name: cleanName(file.name),
+          raw: file.name,
+          genre: detectGenre(file.name),
+          date: dateOf(file.name),
+          dur: a.duration,
+          url,
+          file,
+        }]);
+      };
+    });
+  }, []);
+
+  const handleClearAll = useCallback(() => {
+    if (!tracks.length) return;
+    if (confirm('Clear all tracks? This cannot be undone.')) {
+      if (curAudioRef.current) { curAudioRef.current.pause(); curAudioRef.current = null; }
+      setTracks([]);
+      setPlayingId(null);
+      setNowPlaying(null);
+      setScrubPercents({});
+      setIsEnhanced(false);
+    }
+  }, [tracks.length]);
+
+  // Playback
+  const handlePlay = useCallback((track: Track) => {
+    if (curAudioRef.current) {
+      curAudioRef.current.pause();
+      curAudioRef.current = null;
+    }
+
+    if (playingId === track.id) {
+      setPlayingId(null);
+      setNowPlaying(null);
+      setScrubPercents(prev => ({ ...prev, [track.id]: 0 }));
+      return;
+    }
+
+    const a = new Audio(track.url);
+    curAudioRef.current = a;
+    setPlayingId(track.id);
+    setNowPlaying(track.name);
+    a.play();
+    a.ontimeupdate = () => {
+      if (a.duration) {
+        setScrubPercents(prev => ({ ...prev, [track.id]: (a.currentTime / a.duration) * 100 }));
+      }
+    };
+    a.onended = () => {
+      setPlayingId(null);
+      setNowPlaying(null);
+      setScrubPercents(prev => ({ ...prev, [track.id]: 0 }));
+      curAudioRef.current = null;
+    };
+  }, [playingId]);
+
+  const handleScrub = useCallback((track: Track, pct: number) => {
+    if (curAudioRef.current && playingId === track.id) {
+      curAudioRef.current.currentTime = pct * curAudioRef.current.duration;
+    } else {
+      handlePlay(track);
+      setTimeout(() => {
+        if (curAudioRef.current) {
+          curAudioRef.current.currentTime = pct * curAudioRef.current.duration;
+        }
+      }, 100);
+    }
+  }, [playingId, handlePlay]);
+
+  // Track mutations
+  const handleDelete = useCallback((id: string) => {
+    if (playingId === id) {
+      curAudioRef.current?.pause();
+      curAudioRef.current = null;
+      setPlayingId(null);
+      setNowPlaying(null);
+    }
+    setTracks(prev => prev.filter(t => t.id !== id));
+  }, [playingId]);
+
+  const handleGenreCycle = useCallback((id: string) => {
+    const cycle: Genre[] = ['dh', 'lf', 'hy'];
+    setTracks(prev => prev.map(t => {
+      if (t.id !== id) return t;
+      const idx = cycle.indexOf(t.genre);
+      return { ...t, genre: cycle[(idx + 1) % cycle.length] };
+    }));
+  }, []);
+
+  const handleRename = useCallback((id: string, name: string) => {
+    setTracks(prev => prev.map(t =>
+      t.id === id ? { ...t, name, originalName: null } : t
+    ));
+  }, []);
+
+  // Drag and drop
+  const handleDragStart = useCallback((track: Track) => setDragTrack(track), []);
+  const handleDragEnd = useCallback(() => {
+    setDragTrack(null);
+    setDragOverId(null);
+    setDragPosition(null);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent, track: Track) => {
+    e.preventDefault();
+    if (!dragTrack || dragTrack.id === track.id) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const mid = rect.top + rect.height / 2;
+    setDragOverId(track.id);
+    setDragPosition(e.clientY < mid ? 'above' : 'below');
+  }, [dragTrack]);
+
+  const handleDragLeave = useCallback(() => {
+    setDragOverId(null);
+    setDragPosition(null);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent, target: Track) => {
+    e.preventDefault();
+    if (!dragTrack || dragTrack.id === target.id) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const mid = rect.top + rect.height / 2;
+    const before = e.clientY < mid;
+
+    setTracks(prev => {
+      const without = prev.filter(t => t.id !== dragTrack.id);
+      const destIdx = without.findIndex(t => t.id === target.id);
+      const insertAt = before ? destIdx : destIdx + 1;
+      without.splice(insertAt, 0, dragTrack);
+      return [...without];
+    });
+
+    setDragTrack(null);
+    setDragOverId(null);
+    setDragPosition(null);
+  }, [dragTrack]);
+
+  // YouTube enhance
+  const handleEnhance = useCallback(() => {
+    if (isEnhanced) {
+      setTracks(prev => prev.map(t =>
+        t.originalName ? { ...t, name: t.originalName, originalName: null } : t
+      ));
+      setIsEnhanced(false);
+    } else {
+      let lastSuffix = '';
+      setTracks(prev => prev.map((t, i) => {
+        const cleaned = cleanNameForYouTube(t.name);
+        let suffix = getRotatingSuffix(t.genre, i);
+        if (suffix === lastSuffix) suffix = getRotatingSuffix(t.genre, i + 1);
+        lastSuffix = suffix;
+        return { ...t, originalName: t.name, name: `${cleaned} - ${suffix}` };
+      }));
+      setIsEnhanced(true);
+    }
+  }, [isEnhanced]);
+
+  // Build episode
+  const handleBuild = useCallback(async () => {
+    if (!tracks.length) return;
+    const sortedTracks = sortTracksByPrefix(tracks);
+
+    setCpanel({ open: true, title: 'Building episode...', phase: 'building', progressText: 'Fetching and decoding tracks...', progressPct: 0 });
+
+    try {
+      if (!audioContextRef.current) audioContextRef.current = new AudioContext();
+
+      let totalDuration = 0;
+      sortedTracks.forEach((t, i) => {
+        totalDuration += t.dur;
+        if (i < sortedTracks.length - 1) totalDuration -= crossfadeDuration;
+      });
+
+      const offlineCtx = new OfflineAudioContext(2, Math.ceil(totalDuration * 44100), 44100);
+      const masterGain = offlineCtx.createGain();
+      masterGain.connect(offlineCtx.destination);
+
+      const decodedTracks: AudioBuffer[] = [];
+      for (let i = 0; i < sortedTracks.length; i++) {
+        setCpanel(prev => ({ ...prev, progressText: `Decoding track ${i + 1} of ${sortedTracks.length}...`, progressPct: (i / sortedTracks.length) * 50 }));
+        const resp = await fetch(sortedTracks[i].url);
+        const ab = await resp.arrayBuffer();
+        const decoded = await audioContextRef.current!.decodeAudioData(ab);
+        decodedTracks.push(decoded);
+      }
+
+      let currentTime = 0;
+      for (let i = 0; i < decodedTracks.length; i++) {
+        setCpanel(prev => ({ ...prev, progressText: `Stitching track ${i + 1} of ${sortedTracks.length}...`, progressPct: 50 + (i / sortedTracks.length) * 50 }));
+
+        const source = offlineCtx.createBufferSource();
+        source.buffer = decodedTracks[i];
+        const gain = offlineCtx.createGain();
+        source.connect(gain);
+        gain.connect(masterGain);
+
+        if (i > 0) {
+          gain.gain.setValueAtTime(0, currentTime);
+          gain.gain.linearRampToValueAtTime(1, currentTime + crossfadeDuration);
+        } else {
+          gain.gain.setValueAtTime(1, 0);
+        }
+
+        const trackDuration = decodedTracks[i].duration;
+        const fadeOutStart = currentTime + trackDuration - crossfadeDuration;
+        if (i < decodedTracks.length - 1) {
+          gain.gain.setValueAtTime(1, fadeOutStart);
+          gain.gain.linearRampToValueAtTime(0, fadeOutStart + crossfadeDuration);
+        }
+
+        source.start(currentTime);
+        currentTime += trackDuration - (i < decodedTracks.length - 1 ? crossfadeDuration : 0);
+      }
+
+      setCpanel(prev => ({ ...prev, progressText: 'Rendering audio...' }));
+      const rendered = await offlineCtx.startRendering();
+      const wavData = createWAVFile(rendered);
+      const wavBlob = new Blob([wavData], { type: 'audio/wav' });
+      const today = new Date().toISOString().slice(0, 10);
+
+      // Build chapters
+      let chapterTime = 0;
+      const chapters: string[] = [];
+      const srtEntries: string[] = [];
+      sortedTracks.forEach((t, i) => {
+        const h = Math.floor(chapterTime / 3600);
+        const m = Math.floor((chapterTime % 3600) / 60);
+        const s = Math.floor(chapterTime % 60);
+        const stamp = h > 0
+          ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+          : `${m}:${String(s).padStart(2, '0')}`;
+        chapters.push(`${stamp} ${t.name}`);
+
+        const startS = chapterTime;
+        const endS = chapterTime + t.dur - (i < sortedTracks.length - 1 ? crossfadeDuration : 0);
+        srtEntries.push(`${i + 1}\n${fmtSRT(startS)} --> ${fmtSRT(endS)}\n${t.name}\n`);
+        chapterTime += t.dur - (i < sortedTracks.length - 1 ? crossfadeDuration : 0);
+      });
+
+      setCpanel({
+        open: true,
+        title: 'Episode ready!',
+        phase: 'ready',
+        tracks: sortedTracks,
+        chapters: chapters.join('\n'),
+        srtText: srtEntries.join('\n'),
+        wavBlob,
+        wavFilename: `poolside-episode-${today}.wav`,
+        hasVideo: !!videoFile,
+        videoLabel: videoRes ? `${videoRes.label} (${videoRes.w}×${videoRes.h})` : 'unknown res',
+      });
+    } catch (err: any) {
+      setCpanel({ open: true, title: 'Build failed', phase: 'error', errorMsg: err.message });
+    }
+  }, [tracks, crossfadeDuration, videoFile, videoRes]);
+
+  // Download helpers
+  const downloadBlob = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadWav = useCallback(() => {
+    if (cpanel.wavBlob && cpanel.wavFilename) downloadBlob(cpanel.wavBlob, cpanel.wavFilename);
+  }, [cpanel]);
+
+  const handleCopyChapters = useCallback(() => {
+    if (cpanel.chapters) navigator.clipboard.writeText(cpanel.chapters);
+  }, [cpanel.chapters]);
+
+  const handleDownloadSrt = useCallback(() => {
+    if (cpanel.srtText) {
+      const blob = new Blob([cpanel.srtText], { type: 'text/srt' });
+      const today = new Date().toISOString().slice(0, 10);
+      downloadBlob(blob, `poolside-episode-${today}.srt`);
+    }
+  }, [cpanel.srtText]);
+
+  const handleBuildMp4 = useCallback(async () => {
+    if (!cpanel.wavBlob || !videoFile) return;
+    setCpanel(prev => ({ ...prev, mp4Building: true, mp4Status: 'Loading FFmpeg (first time may take ~30s)...', mp4ProgPct: 5 }));
+
+    try {
+      const [ffmpegMod, utilMod] = await Promise.all([
+        import('https://esm.sh/@ffmpeg/ffmpeg@0.12.10' as any),
+        import('https://esm.sh/@ffmpeg/util@0.12.1' as any),
+      ]);
+
+      const { FFmpeg } = ffmpegMod;
+      const { fetchFile, toBlobURL } = utilMod;
+      const ffmpeg = new FFmpeg();
+
+      ffmpeg.on('progress', ({ progress }: { progress: number }) => {
+        if (progress > 0) {
+          setCpanel(prev => ({
+            ...prev,
+            mp4Status: `Muxing video + audio... ${Math.round(progress * 100)}%`,
+            mp4ProgPct: Math.min(95, 30 + progress * 65),
+          }));
+        }
+      });
+
+      setCpanel(prev => ({ ...prev, mp4Status: 'Downloading FFmpeg core...', mp4ProgPct: 10 }));
+      const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
+      await ffmpeg.load({
+        coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+        wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+      });
+
+      setCpanel(prev => ({ ...prev, mp4Status: 'Writing files to FFmpeg...', mp4ProgPct: 20 }));
+      const vExt = videoFile.name.toLowerCase().endsWith('.mov') ? 'mov' : 'mp4';
+      await ffmpeg.writeFile(`input.${vExt}`, await fetchFile(videoFile));
+      const wavArray = new Uint8Array(await cpanel.wavBlob!.arrayBuffer());
+      await ffmpeg.writeFile('audio.wav', wavArray);
+
+      setCpanel(prev => ({ ...prev, mp4Status: 'Muxing video + audio...', mp4ProgPct: 30 }));
+      await ffmpeg.exec([
+        '-stream_loop', '-1', '-i', `input.${vExt}`,
+        '-i', 'audio.wav', '-c:v', 'copy', '-c:a', 'aac',
+        '-b:a', '192k', '-shortest', '-movflags', '+faststart', 'output.mp4',
+      ]);
+
+      const data = await ffmpeg.readFile('output.mp4');
+      const mp4Blob = new Blob([data.buffer], { type: 'video/mp4' });
+      ffmpeg.terminate();
+
+      const today = new Date().toISOString().slice(0, 10);
+      setCpanel(prev => ({
+        ...prev,
+        mp4Building: false,
+        mp4Blob,
+        mp4Filename: `poolside-episode-${today}.mp4`,
+        mp4Status: 'MP4 ready. Straight to YouTube.',
+        mp4ProgPct: 100,
+      }));
+    } catch (err: any) {
+      setCpanel(prev => ({
+        ...prev,
+        mp4Building: false,
+        mp4Status: `MP4 build failed: ${err.message}. You can still download the WAV above.`,
+      }));
+    }
+  }, [cpanel.wavBlob, videoFile]);
+
+  const handleDownloadMp4 = useCallback(() => {
+    if (cpanel.mp4Blob && cpanel.mp4Filename) downloadBlob(cpanel.mp4Blob, cpanel.mp4Filename);
+  }, [cpanel]);
+
   return (
-    <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: '#fcfbf8' }}>
-      <img data-lovable-blank-page-placeholder="REMOVE_THIS" src="/placeholder.svg" alt="Your app will live here!" />
-    </div>
+    <>
+      <BackgroundVideo videoUrl={videoUrl} />
+      <VideoDropScreen visible={showDrop} onVideoLoad={handleVideoLoad} onSkip={handleSkip} />
+
+      <div className="app-container">
+        <AppHeader
+          hasVideo={!!videoUrl}
+          videoSkipped={videoSkipped}
+          onChangeVideo={handleChangeVideo}
+        />
+        <FilterBar
+          filter={filter}
+          onFilterChange={setFilter}
+          onLoadTracks={handleLoadTracks}
+          onClearAll={handleClearAll}
+        />
+        <TrackList
+          tracks={sorted}
+          allTracks={sorted}
+          filter={filter}
+          playingId={playingId}
+          scrubPercents={scrubPercents}
+          dragOverId={dragOverId}
+          dragPosition={dragPosition}
+          onPlay={handlePlay}
+          onDelete={handleDelete}
+          onGenreCycle={handleGenreCycle}
+          onRename={handleRename}
+          onScrub={handleScrub}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        />
+      </div>
+
+      <FooterBar
+        tracks={sorted}
+        crossfadeDuration={crossfadeDuration}
+        onCrossfadeChange={setCrossfadeDuration}
+        nowPlaying={nowPlaying}
+        isEnhanced={isEnhanced}
+        onEnhance={handleEnhance}
+        onBuild={handleBuild}
+      />
+
+      <CommandPanel
+        state={cpanel}
+        onClose={() => setCpanel(prev => ({ ...prev, open: false }))}
+        onDownloadWav={handleDownloadWav}
+        onCopyChapters={handleCopyChapters}
+        onDownloadSrt={handleDownloadSrt}
+        onBuildMp4={handleBuildMp4}
+        onDownloadMp4={handleDownloadMp4}
+      />
+    </>
   );
 };
-
-const Index = PlaceholderIndex;
 
 export default Index;
