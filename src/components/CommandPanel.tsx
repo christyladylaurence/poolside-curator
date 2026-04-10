@@ -1,0 +1,132 @@
+import React from 'react';
+import { Track, fmt } from '@/lib/audio-utils';
+
+export interface CommandPanelState {
+  open: boolean;
+  title: string;
+  phase: 'building' | 'ready' | 'error';
+  progressText?: string;
+  progressPct?: number;
+  chapters?: string;
+  srtText?: string;
+  tracks?: Track[];
+  wavBlob?: Blob;
+  wavFilename?: string;
+  errorMsg?: string;
+  hasVideo?: boolean;
+  videoLabel?: string;
+  mp4Status?: string;
+  mp4ProgPct?: number;
+  mp4Blob?: Blob;
+  mp4Filename?: string;
+  mp4Building?: boolean;
+}
+
+interface CommandPanelProps {
+  state: CommandPanelState;
+  onClose: () => void;
+  onDownloadWav: () => void;
+  onCopyChapters: () => void;
+  onDownloadSrt: () => void;
+  onBuildMp4: () => void;
+  onDownloadMp4: () => void;
+}
+
+const CommandPanel: React.FC<CommandPanelProps> = ({
+  state, onClose, onDownloadWav, onCopyChapters, onDownloadSrt, onBuildMp4, onDownloadMp4,
+}) => {
+  if (!state.open) return null;
+
+  return (
+    <div className={`cpanel ${state.open ? 'on' : ''}`}>
+      <div className="cbox">
+        <div className="chead">
+          <div className="ctitle">{state.title}</div>
+          <button className="closex" onClick={onClose}>✕</button>
+        </div>
+        <div className="cbody">
+          {state.phase === 'building' && (
+            <>
+              <div className="progress-text">{state.progressText}</div>
+              <div className="progress-bar">
+                <div className="progress-fill" style={{ width: `${state.progressPct || 0}%` }} />
+              </div>
+            </>
+          )}
+
+          {state.phase === 'error' && (
+            <>
+              <div className="cmd" style={{ color: '#d97a7a' }}>{state.errorMsg}</div>
+              <button className="copy-btn" onClick={onClose}>Close</button>
+            </>
+          )}
+
+          {state.phase === 'ready' && (
+            <>
+              <div className="clbl">Track order</div>
+              <div className="order-list">
+                {state.tracks?.map((t, i) => (
+                  <div key={t.id} className="order-item">
+                    <span className="num">{i + 1}.</span>
+                    <span>{t.name}</span>
+                    <span className="dur">{fmt(t.dur)}</span>
+                  </div>
+                ))}
+              </div>
+
+              {state.chapters && (
+                <>
+                  <div className="clbl">YouTube chapters</div>
+                  <div className="cmd" style={{ cursor: 'pointer' }} title="Click to copy"
+                    dangerouslySetInnerHTML={{ __html: state.chapters.replace(/\n/g, '<br>') }}
+                  />
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button className="copy-btn" style={{ flex: 1 }} onClick={onCopyChapters}>
+                      Copy chapters
+                    </button>
+                    <button className="copy-btn" style={{ flex: 1 }} onClick={onDownloadSrt}>
+                      Download SRT
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {state.hasVideo && !state.mp4Blob && (
+                <button
+                  className="download-btn mp4-btn"
+                  onClick={onBuildMp4}
+                  disabled={state.mp4Building}
+                >
+                  {state.mp4Building ? 'Building...' : `🎬 Build video (MP4) at ${state.videoLabel} — ready for YouTube`}
+                </button>
+              )}
+
+              {state.mp4Blob && (
+                <button className="download-btn" onClick={onDownloadMp4}>
+                  ⬇ Download MP4
+                </button>
+              )}
+
+              <button className="download-btn" onClick={onDownloadWav}>
+                ⬇ Download audio only (WAV)
+              </button>
+
+              {state.mp4Status && (
+                <div className={`mp4-status ${state.mp4Status ? 'on' : ''}`}>
+                  <span>{state.mp4Status}</span>
+                  {state.mp4ProgPct !== undefined && (
+                    <div className="progress-bar">
+                      <div className="progress-fill" style={{ width: `${state.mp4ProgPct}%` }} />
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default CommandPanel;
