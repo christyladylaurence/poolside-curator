@@ -18,7 +18,7 @@ interface TrackListProps {
   onDragStart: (track: Track) => void;
   onDragEnd: () => void;
   onDragOver: (e: React.DragEvent, track: Track) => void;
-  onDragLeave: (id: string) => void;
+  onDragLeave: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent, track: Track) => void;
 }
 
@@ -60,7 +60,7 @@ const TrackList: React.FC<TrackListProps> = ({
                 onDragStart={() => onDragStart(t)}
                 onDragEnd={onDragEnd}
                 onDragOver={e => onDragOver(e, t)}
-                onDragLeave={() => onDragLeave(t.id)}
+                onDragLeave={e => onDragLeave(e)}
                 onDrop={e => onDrop(e, t)}
                 dropClass={dropClass}
               />
