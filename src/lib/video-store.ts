@@ -1,4 +1,5 @@
 const DB_NAME = 'poolside-media';
+const OLD_DB_NAME = 'poolside-video';
 const VIDEO_STORE = 'videos';
 const TRACKS_STORE = 'tracks';
 const VIDEO_KEY = 'bg-video';
@@ -18,6 +19,30 @@ function openDB(): Promise<IDBDatabase> {
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
+}
+
+// Migrate video from old DB if it exists
+async function migrateOldVideo(): Promise<void> {
+  try {
+    const oldReq = indexedDB.open(OLD_DB_NAME, 1);
+    const oldDb: IDBDatabase = await new Promise((res, rej) => {
+      oldReq.onsuccess = () => res(oldReq.result);
+      oldReq.onerror = () => rej(oldReq.error);
+      oldReq.onupgradeneeded = () => { oldReq.result.close(); rej('no old db'); };
+    });
+    const tx = oldDb.transaction(VIDEO_STORE, 'readonly');
+    const getReq = tx.objectStore(VIDEO_STORE).get(VIDEO_KEY);
+    const data = await new Promise<any>((res) => {
+      getReq.onsuccess = () => res(getReq.result);
+      getReq.onerror = () => res(null);
+    });
+    oldDb.close();
+    if (data?.blob) {
+      const file = new File([data.blob], data.name, { type: data.type });
+      await saveVideo(file);
+    }
+    indexedDB.deleteDatabase(OLD_DB_NAME);
+  } catch {}
 }
 
 // --- Video ---
