@@ -112,7 +112,7 @@ const TrackItem: React.FC<TrackItemProps> = ({
         onClick={e => { e.stopPropagation(); onCycleEnergy(); }}
         title={`Energy: ${['off', 'low', 'medium', 'high'][track.energy || 0]} — click to cycle`}
       >
-        <Music size={[14, 14, 18, 24][track.energy || 0]} />
+        <Music size={[14, 16, 20, 26][track.energy || 0]} />
       </button>
       <button
         className={`cutoff-side-btn ${track.cutoff ? 'active' : ''}`}
