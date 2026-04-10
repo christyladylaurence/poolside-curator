@@ -620,7 +620,51 @@
   background: rgba(74, 222, 128, 0.1);
   border-color: rgba(74, 222, 128, 0.3);
 }
-.track-row .check-side-btn + .cutoff-side-btn {
+/* Energy side button — music note vibe indicator */
+.energy-side-btn {
+  width: 36px;
+  flex-shrink: 0;
+  border: 1px solid transparent;
+  border-left: none;
+  border-radius: 0;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  color: hsl(var(--text-muted));
+  opacity: 0.35;
+}
+.track-row:hover .energy-side-btn {
+  opacity: 0.6;
+  border-color: var(--border-custom);
+  background: var(--surface);
+}
+.energy-side-btn:hover {
+  opacity: 1 !important;
+  color: var(--amber-hex);
+  background: var(--amber-glow) !important;
+  border-color: rgba(200, 137, 58, 0.3) !important;
+}
+.energy-side-btn.energy-1 {
+  opacity: 0.6;
+  color: var(--amber-dim);
+}
+.energy-side-btn.energy-2 {
+  opacity: 0.85;
+  color: var(--amber-hex);
+  background: var(--amber-glow);
+  border-color: rgba(200, 137, 58, 0.15);
+}
+.energy-side-btn.energy-3 {
+  opacity: 1;
+  color: #e9a84c;
+  background: rgba(200, 137, 58, 0.18);
+  border-color: rgba(200, 137, 58, 0.35);
+}
+
+.track-row .energy-side-btn + .cutoff-side-btn {
   border-radius: 0 4px 4px 0;
 }
 

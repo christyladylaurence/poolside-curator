@@ -33,11 +33,12 @@ interface TrackListProps {
   onLoadTracks: (files: FileList) => void;
   onToggleCutoff: (id: string) => void;
   onToggleChecked: (id: string) => void;
+  onCycleEnergy: (id: string) => void;
 }
 
 const TrackList: React.FC<TrackListProps> = ({
   tracks, allTracks, filter, playingId, scrubPercents,
-  onPlay, onDelete, onGenreCycle, onRename, onScrub, onReorder, onLoadTracks, onToggleCutoff, onToggleChecked,
+  onPlay, onDelete, onGenreCycle, onRename, onScrub, onReorder, onLoadTracks, onToggleCutoff, onToggleChecked, onCycleEnergy,
 }) => {
   const [fileDragOver, setFileDragOver] = React.useState(false);
   const visible = useMemo(
@@ -136,6 +137,7 @@ const TrackList: React.FC<TrackListProps> = ({
                     onScrub={pct => onScrub(t, pct)}
                     onToggleCutoff={() => onToggleCutoff(t.id)}
                     onToggleChecked={() => onToggleChecked(t.id)}
+                    onCycleEnergy={() => onCycleEnergy(t.id)}
                   />
                 );
               })}
@@ -154,6 +156,7 @@ const TrackList: React.FC<TrackListProps> = ({
                   onScrub={() => {}}
                   onToggleCutoff={() => {}}
                   onToggleChecked={() => {}}
+                  onCycleEnergy={() => {}}
                   isOverlay
                 />
               ) : null}

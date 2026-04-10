@@ -252,6 +252,12 @@ const Index: React.FC = () => {
     ));
   }, []);
 
+  const handleCycleEnergy = useCallback((id: string) => {
+    setTracks(prev => prev.map(t =>
+      t.id === id ? { ...t, energy: (((t.energy || 0) + 1) % 4) as 0 | 1 | 2 | 3 } : t
+    ));
+  }, []);
+
   // Reorder tracks (from dnd-kit)
   const handleReorder = useCallback((newTracks: Track[]) => {
     setTracks(newTracks);
@@ -519,6 +525,7 @@ const Index: React.FC = () => {
           onScrub={handleScrub}
           onToggleCutoff={handleToggleCutoff}
           onToggleChecked={handleToggleChecked}
+          onCycleEnergy={handleCycleEnergy}
           onReorder={handleReorder}
           onLoadTracks={handleLoadTracks}
         />

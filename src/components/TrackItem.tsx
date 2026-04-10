@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Track, Genre, fmt } from '@/lib/audio-utils';
+import { Music } from 'lucide-react';
 
 export interface TrackItemProps {
   track: Track;
@@ -13,6 +14,7 @@ export interface TrackItemProps {
   onScrub: (pct: number) => void;
   onToggleCutoff: () => void;
   onToggleChecked: () => void;
+  onCycleEnergy: () => void;
   isOverlay?: boolean;
   sortableProps?: Record<string, any>;
 }
@@ -21,7 +23,7 @@ const genreLabels: Record<Genre, string> = { dh: 'DH', lf: 'LF', hy: 'HY' };
 
 const TrackItem: React.FC<TrackItemProps> = ({
   track, displayNum, isPlaying, scrubPercent,
-  onPlay, onDelete, onGenreCycle, onRename, onScrub, onToggleCutoff, onToggleChecked,
+  onPlay, onDelete, onGenreCycle, onRename, onScrub, onToggleCutoff, onToggleChecked, onCycleEnergy,
   isOverlay, sortableProps,
 }) => {
   const [editing, setEditing] = useState(false);
@@ -104,6 +106,13 @@ const TrackItem: React.FC<TrackItemProps> = ({
         title={track.checked ? 'Marked as checked — click to clear' : 'Mark as checked / fine'}
       >
         ✓
+      </button>
+      <button
+        className={`energy-side-btn energy-${track.energy || 0}`}
+        onClick={e => { e.stopPropagation(); onCycleEnergy(); }}
+        title={`Energy: ${['off', 'low', 'medium', 'high'][track.energy || 0]} — click to cycle`}
+      >
+        <Music size={[14, 14, 18, 24][track.energy || 0]} />
       </button>
       <button
         className={`cutoff-side-btn ${track.cutoff ? 'active' : ''}`}
