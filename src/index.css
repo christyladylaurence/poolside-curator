@@ -358,7 +358,7 @@
   border: 1px solid var(--border-custom);
   border-radius: 3px;
   cursor: grab;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.15s, border-color 0.15s, transform 0.2s ease, opacity 0.2s ease;
   user-select: none;
   position: relative;
   overflow: hidden;
@@ -372,20 +372,15 @@
 .track:active {
   cursor: grabbing;
 }
-.track.dragging {
-  opacity: 0.15;
-  transform: scale(0.97);
-}
 .track.playing {
   border-color: rgba(200,137,58,0.35);
 }
-.track.drop-above {
-  border-top: 2px solid var(--amber-hex);
-  box-shadow: 0 -4px 12px rgba(200,137,58,0.3);
-}
-.track.drop-below {
-  border-bottom: 2px solid var(--amber-hex);
-  box-shadow: 0 4px 12px rgba(200,137,58,0.3);
+.track.drag-overlay {
+  opacity: 0.9;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 12px rgba(200,137,58,0.3);
+  border-color: var(--amber-hex);
+  transform: scale(1.02);
+  cursor: grabbing;
 }
 
 .track-main {

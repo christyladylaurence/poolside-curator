@@ -37,10 +37,6 @@ const Index: React.FC = () => {
   const [scrubPercents, setScrubPercents] = useState<Record<string, number>>({});
   const [crossfadeDuration, setCrossfadeDuration] = useState(3);
   const [isEnhanced, setIsEnhanced] = useState(false);
-  const [dragTrack, setDragTrack] = useState<Track | null>(null);
-  const dragTrackRef = useRef<Track | null>(null);
-  const [dragOverId, setDragOverId] = useState<string | null>(null);
-  const [dragPosition, setDragPosition] = useState<'above' | 'below' | null>(null);
   const [cpanel, setCpanel] = useState<CommandPanelState>({ open: false, title: '', phase: 'building' });
 
   useEffect(() => {
@@ -193,64 +189,9 @@ const Index: React.FC = () => {
     ));
   }, []);
 
-  // Drag and drop
-  const handleDragStart = useCallback((track: Track) => {
-    setDragTrack(track);
-    dragTrackRef.current = track;
-  }, []);
-  const handleDragEnd = useCallback(() => {
-    setDragTrack(null);
-    dragTrackRef.current = null;
-    setDragOverId(null);
-    setDragPosition(null);
-  }, []);
-
-  const handleDragOver = useCallback((e: React.DragEvent, track: Track) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    const dt = dragTrackRef.current;
-    if (!dt || dt.id === track.id) {
-      setDragOverId(null);
-      setDragPosition(null);
-      return;
-    }
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const mid = rect.top + rect.height / 2;
-    setDragOverId(track.id);
-    setDragPosition(e.clientY < mid ? 'above' : 'below');
-  }, []);
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    // Only clear if we're actually leaving the track element, not entering a child
-    const related = e.relatedTarget as Node | null;
-    const current = e.currentTarget as HTMLElement;
-    if (!related || !current.contains(related)) {
-      setDragOverId(null);
-      setDragPosition(null);
-    }
-  }, []);
-
-  const handleDrop = useCallback((e: React.DragEvent, target: Track) => {
-    e.preventDefault();
-    const dt = dragTrackRef.current;
-    if (!dt || dt.id === target.id) return;
-
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const mid = rect.top + rect.height / 2;
-    const before = e.clientY < mid;
-
-    setTracks(prev => {
-      const without = prev.filter(t => t.id !== dt.id);
-      const destIdx = without.findIndex(t => t.id === target.id);
-      const insertAt = before ? destIdx : destIdx + 1;
-      without.splice(insertAt, 0, dt);
-      return [...without];
-    });
-
-    setDragTrack(null);
-    dragTrackRef.current = null;
-    setDragOverId(null);
-    setDragPosition(null);
+  // Reorder tracks (from dnd-kit)
+  const handleReorder = useCallback((newTracks: Track[]) => {
+    setTracks(newTracks);
   }, []);
 
   // YouTube enhance
@@ -508,18 +449,12 @@ const Index: React.FC = () => {
           filter={filter}
           playingId={playingId}
           scrubPercents={scrubPercents}
-          dragOverId={dragOverId}
-          dragPosition={dragPosition}
           onPlay={handlePlay}
           onDelete={handleDelete}
           onGenreCycle={handleGenreCycle}
           onRename={handleRename}
           onScrub={handleScrub}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
+          onReorder={handleReorder}
         />
       </div>
 
