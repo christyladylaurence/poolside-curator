@@ -16,7 +16,7 @@ const filters = [
   { key: 'hy', label: 'Hybrid' },
 ];
 
-const FilterBar: React.FC<FilterBarProps> = ({ filter, onFilterChange, onLoadTracks, onClearAll }) => {
+const FilterBar: React.FC<FilterBarProps> = ({ filter, onFilterChange, onLoadTracks, onClearAll, onLoadDemo, hasTracks }) => {
   const fileRef = useRef<HTMLInputElement>(null);
 
   return (
@@ -43,6 +43,11 @@ const FilterBar: React.FC<FilterBarProps> = ({ filter, onFilterChange, onLoadTra
       <button className="action-btn clear-btn" onClick={onClearAll}>
         Clear all
       </button>
+      {!hasTracks && onLoadDemo && (
+        <button className="action-btn load-btn" onClick={onLoadDemo} style={{ borderColor: 'var(--dh)', color: 'var(--dh)', background: 'rgba(90,175,200,0.08)' }}>
+          ♫ Demo tracks
+        </button>
+      )}
       <input
         ref={fileRef}
         type="file"
