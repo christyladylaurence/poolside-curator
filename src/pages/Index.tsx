@@ -459,6 +459,11 @@ const Index: React.FC = () => {
           onFilterChange={setFilter}
           onLoadTracks={handleLoadTracks}
           onClearAll={handleClearAll}
+          hasTracks={tracks.length > 0}
+          onLoadDemo={() => {
+            const dummyFile = new File([], 'demo.mp3', { type: 'audio/mpeg' });
+            setTracks(DEMO_TRACKS.map(t => ({ ...t, url: '', file: dummyFile } as Track)));
+          }}
         />
         <TrackList
           tracks={sorted}
