@@ -30,6 +30,7 @@ interface TrackListProps {
   onRename: (id: string, name: string) => void;
   onScrub: (track: Track, pct: number) => void;
   onReorder: (newTracks: Track[]) => void;
+  onLoadTracks: (files: FileList) => void;
 }
 
 const TrackList: React.FC<TrackListProps> = ({
