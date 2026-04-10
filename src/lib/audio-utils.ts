@@ -10,6 +10,7 @@ export interface Track {
   url: string;
   file: File;
   originalName?: string | null;
+  cutoff?: boolean;
 }
 
 export function cleanName(n: string): string {

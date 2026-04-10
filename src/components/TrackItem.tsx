@@ -11,6 +11,7 @@ export interface TrackItemProps {
   onGenreCycle: () => void;
   onRename: (newName: string) => void;
   onScrub: (pct: number) => void;
+  onToggleCutoff: () => void;
   isOverlay?: boolean;
   sortableProps?: Record<string, any>;
 }
@@ -19,7 +20,7 @@ const genreLabels: Record<Genre, string> = { dh: 'DH', lf: 'LF', hy: 'HY' };
 
 const TrackItem: React.FC<TrackItemProps> = ({
   track, displayNum, isPlaying, scrubPercent,
-  onPlay, onDelete, onGenreCycle, onRename, onScrub,
+  onPlay, onDelete, onGenreCycle, onRename, onScrub, onToggleCutoff,
   isOverlay, sortableProps,
 }) => {
   const [editing, setEditing] = useState(false);
@@ -87,6 +88,13 @@ const TrackItem: React.FC<TrackItemProps> = ({
           onClick={e => { e.stopPropagation(); onGenreCycle(); }}
         />
         <div className="tdur">{fmt(track.dur)}</div>
+        <button
+          className={`cutoff-btn ${track.cutoff ? 'active' : ''}`}
+          onClick={e => { e.stopPropagation(); onToggleCutoff(); }}
+          title={track.cutoff ? 'Marked as cut off — click to clear' : 'Mark as cut off'}
+        >
+          ✂
+        </button>
         <button className="del-btn" onClick={e => { e.stopPropagation(); onDelete(); }} title="Remove track">
           ✕
         </button>
