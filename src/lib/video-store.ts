@@ -58,6 +58,8 @@ export async function saveVideo(file: File): Promise<void> {
 }
 
 export async function loadVideo(): Promise<File | null> {
+  // Try migrating from old DB first
+  await migrateOldVideo();
   try {
     const db = await openDB();
     const tx = db.transaction(VIDEO_STORE, 'readonly');
