@@ -1,4 +1,20 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragStartEvent,
+  DragOverlay,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import SortableTrackItem from './SortableTrackItem';
 import TrackItem from './TrackItem';
 import { Track } from '@/lib/audio-utils';
 
@@ -8,27 +24,52 @@ interface TrackListProps {
   filter: string;
   playingId: string | null;
   scrubPercents: Record<string, number>;
-  dragOverId: string | null;
-  dragPosition: 'above' | 'below' | null;
   onPlay: (track: Track) => void;
   onDelete: (id: string) => void;
   onGenreCycle: (id: string) => void;
   onRename: (id: string, name: string) => void;
   onScrub: (track: Track, pct: number) => void;
-  onDragStart: (track: Track) => void;
-  onDragEnd: () => void;
-  onDragOver: (e: React.DragEvent, track: Track) => void;
-  onDragLeave: (e: React.DragEvent) => void;
-  onDrop: (e: React.DragEvent, track: Track) => void;
+  onReorder: (newTracks: Track[]) => void;
 }
 
 const TrackList: React.FC<TrackListProps> = ({
   tracks, allTracks, filter, playingId, scrubPercents,
-  dragOverId, dragPosition,
-  onPlay, onDelete, onGenreCycle, onRename, onScrub,
-  onDragStart, onDragEnd, onDragOver, onDragLeave, onDrop,
+  onPlay, onDelete, onGenreCycle, onRename, onScrub, onReorder,
 }) => {
-  const visible = tracks.filter(t => filter === 'all' || t.genre === filter);
+  const visible = useMemo(
+    () => tracks.filter(t => filter === 'all' || t.genre === filter),
+    [tracks, filter]
+  );
+
+  const [activeId, setActiveId] = React.useState<string | null>(null);
+  const activeTrack = useMemo(
+    () => visible.find(t => t.id === activeId) || null,
+    [visible, activeId]
+  );
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 5 },
+    })
+  );
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveId(null);
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = tracks.findIndex(t => t.id === active.id);
+    const newIndex = tracks.findIndex(t => t.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    onReorder(arrayMove(tracks, oldIndex, newIndex));
+  };
+
+  const itemIds = useMemo(() => visible.map(t => t.id), [visible]);
 
   return (
     <>
@@ -39,33 +80,48 @@ const TrackList: React.FC<TrackListProps> = ({
         {visible.length === 0 ? (
           <div className="empty-state">Load your tracks to begin</div>
         ) : (
-          visible.map(t => {
-            const actualIdx = allTracks.findIndex(x => x.id === t.id);
-            let dropClass = '';
-            if (dragOverId === t.id && dragPosition === 'above') dropClass = 'drop-above';
-            if (dragOverId === t.id && dragPosition === 'below') dropClass = 'drop-below';
-
-            return (
-              <TrackItem
-                key={t.id}
-                track={t}
-                displayNum={actualIdx + 1}
-                isPlaying={playingId === t.id}
-                scrubPercent={scrubPercents[t.id] || 0}
-                onPlay={() => onPlay(t)}
-                onDelete={() => onDelete(t.id)}
-                onGenreCycle={() => onGenreCycle(t.id)}
-                onRename={name => onRename(t.id, name)}
-                onScrub={pct => onScrub(t, pct)}
-                onDragStart={() => onDragStart(t)}
-                onDragEnd={onDragEnd}
-                onDragOver={e => onDragOver(e, t)}
-                onDragLeave={e => onDragLeave(e)}
-                onDrop={e => onDrop(e, t)}
-                dropClass={dropClass}
-              />
-            );
-          })
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+              {visible.map(t => {
+                const actualIdx = allTracks.findIndex(x => x.id === t.id);
+                return (
+                  <SortableTrackItem
+                    key={t.id}
+                    track={t}
+                    displayNum={actualIdx + 1}
+                    isPlaying={playingId === t.id}
+                    scrubPercent={scrubPercents[t.id] || 0}
+                    onPlay={() => onPlay(t)}
+                    onDelete={() => onDelete(t.id)}
+                    onGenreCycle={() => onGenreCycle(t.id)}
+                    onRename={name => onRename(t.id, name)}
+                    onScrub={pct => onScrub(t, pct)}
+                  />
+                );
+              })}
+            </SortableContext>
+            <DragOverlay>
+              {activeTrack ? (
+                <TrackItem
+                  track={activeTrack}
+                  displayNum={allTracks.findIndex(x => x.id === activeTrack.id) + 1}
+                  isPlaying={playingId === activeTrack.id}
+                  scrubPercent={scrubPercents[activeTrack.id] || 0}
+                  onPlay={() => {}}
+                  onDelete={() => {}}
+                  onGenreCycle={() => {}}
+                  onRename={() => {}}
+                  onScrub={() => {}}
+                  isOverlay
+                />
+              ) : null}
+            </DragOverlay>
+          </DndContext>
         )}
       </div>
     </>

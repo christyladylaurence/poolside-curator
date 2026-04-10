@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Track, Genre, fmt } from '@/lib/audio-utils';
 
-interface TrackItemProps {
+export interface TrackItemProps {
   track: Track;
   displayNum: number;
   isPlaying: boolean;
@@ -11,12 +11,8 @@ interface TrackItemProps {
   onGenreCycle: () => void;
   onRename: (newName: string) => void;
   onScrub: (pct: number) => void;
-  onDragStart: () => void;
-  onDragEnd: () => void;
-  onDragOver: (e: React.DragEvent) => void;
-  onDragLeave: (e: React.DragEvent) => void;
-  onDrop: (e: React.DragEvent) => void;
-  dropClass: string;
+  isOverlay?: boolean;
+  sortableProps?: Record<string, any>;
 }
 
 const genreLabels: Record<Genre, string> = { dh: 'DH', lf: 'LF', hy: 'HY' };
@@ -24,11 +20,10 @@ const genreLabels: Record<Genre, string> = { dh: 'DH', lf: 'LF', hy: 'HY' };
 const TrackItem: React.FC<TrackItemProps> = ({
   track, displayNum, isPlaying, scrubPercent,
   onPlay, onDelete, onGenreCycle, onRename, onScrub,
-  onDragStart, onDragEnd, onDragOver, onDragLeave, onDrop, dropClass,
+  isOverlay, sortableProps,
 }) => {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(track.name);
-  const [isDragging, setIsDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const startEdit = useCallback((e: React.MouseEvent) => {
@@ -53,17 +48,13 @@ const TrackItem: React.FC<TrackItemProps> = ({
 
   return (
     <div
-      className={`track ${isPlaying ? 'playing' : ''} ${isDragging ? 'dragging' : ''} ${dropClass}`}
-      draggable
-      onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; setIsDragging(true); onDragStart(); }}
-      onDragEnd={() => { setIsDragging(false); onDragEnd(); }}
-      onDragOver={onDragOver}
-      onDragLeave={onDragLeave}
-      onDrop={onDrop}
+      {...(sortableProps || {})}
+      ref={sortableProps?.ref}
+      className={`track ${isPlaying ? 'playing' : ''} ${isOverlay ? 'drag-overlay' : ''}`}
     >
       <div className="track-main">
         <div className="tnum">{displayNum}.</div>
-        <div className="handle">⠿</div>
+        <div className="handle" style={{ cursor: 'grab', touchAction: 'none' }}>⠿</div>
         <button className="pbtn" onClick={e => { e.stopPropagation(); onPlay(); }}>
           {isPlaying ? '⏸' : '▶'}
         </button>
