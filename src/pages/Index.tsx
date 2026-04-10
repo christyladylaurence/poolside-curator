@@ -64,6 +64,17 @@ const Index: React.FC = () => {
     });
   }, []);
 
+  // Auto-save tracks to IndexedDB whenever they change
+  const tracksLoadedRef = useRef(false);
+  useEffect(() => {
+    // Skip the initial empty state before restoration
+    if (!tracksLoadedRef.current && tracks.length === 0) return;
+    tracksLoadedRef.current = true;
+    if (!isDemo) {
+      saveTracks(tracks);
+    }
+  }, [tracks, isDemo]);
+
   useEffect(() => {
     if (isDemo && tracks.length === 0) {
       const dummyFile = new File([], 'demo.mp3', { type: 'audio/mpeg' });
