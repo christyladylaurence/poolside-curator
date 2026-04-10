@@ -95,6 +95,7 @@ const Index: React.FC = () => {
   const handleChangeVideo = useCallback(() => {
     setShowDrop(true);
     setVideoUrl(null);
+    clearVideo();
   }, []);
 
   // Track loading — sort by prefix at load time
