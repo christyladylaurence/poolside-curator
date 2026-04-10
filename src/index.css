@@ -372,6 +372,17 @@
   color: hsl(var(--text-muted));
 }
 
+/* Track row — track + cutoff button side by side */
+.track-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+.track-row .track {
+  flex: 1;
+  min-width: 0;
+}
+
 /* Track item */
 .track {
   display: flex;
