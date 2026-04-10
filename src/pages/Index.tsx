@@ -453,18 +453,12 @@ const Index: React.FC = () => {
           filter={filter}
           playingId={playingId}
           scrubPercents={scrubPercents}
-          dragOverId={dragOverId}
-          dragPosition={dragPosition}
           onPlay={handlePlay}
           onDelete={handleDelete}
           onGenreCycle={handleGenreCycle}
           onRename={handleRename}
           onScrub={handleScrub}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
+          onReorder={handleReorder}
         />
       </div>
 
