@@ -12,6 +12,7 @@ export interface Track {
   originalName?: string | null;
   cutoff?: boolean;
   checked?: boolean;
+  energy?: 0 | 1 | 2 | 3;
 }
 
 export function cleanName(n: string): string {
