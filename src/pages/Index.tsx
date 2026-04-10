@@ -6,7 +6,7 @@ import FilterBar from '@/components/FilterBar';
 import TrackList from '@/components/TrackList';
 import FooterBar from '@/components/FooterBar';
 import CommandPanel, { CommandPanelState } from '@/components/CommandPanel';
-import { saveVideo, loadVideo, clearVideo } from '@/lib/video-store';
+import { saveVideo, loadVideo, clearVideo, saveTracks, loadTracks, clearTracks } from '@/lib/video-store';
 import {
   Track, Genre, cleanName, cleanNameForYouTube, detectGenre, dateOf,
   fmt, fmtSRT, getResLabel, sortTracksByPrefix, getRotatingSuffix, createWAVFile,
@@ -56,7 +56,24 @@ const Index: React.FC = () => {
         };
       }
     });
+    // Restore tracks from IndexedDB on mount
+    loadTracks().then(loaded => {
+      if (loaded?.length) {
+        setTracks(loaded as Track[]);
+      }
+    });
   }, []);
+
+  // Auto-save tracks to IndexedDB whenever they change
+  const tracksLoadedRef = useRef(false);
+  useEffect(() => {
+    // Skip the initial empty state before restoration
+    if (!tracksLoadedRef.current && tracks.length === 0) return;
+    tracksLoadedRef.current = true;
+    if (!isDemo) {
+      saveTracks(tracks);
+    }
+  }, [tracks, isDemo]);
 
   useEffect(() => {
     if (isDemo && tracks.length === 0) {
@@ -148,6 +165,7 @@ const Index: React.FC = () => {
       setNowPlaying(null);
       setScrubPercents({});
       setIsEnhanced(false);
+      clearTracks();
     }
   }, [tracks.length]);
 
