@@ -73,14 +73,43 @@ const TrackList: React.FC<TrackListProps> = ({
 
   const itemIds = useMemo(() => visible.map(t => t.id), [visible]);
 
+  const handleFileDrop = React.useCallback((e: React.DragEvent) => {
+    // Only handle file drops, not dnd-kit reorder drags
+    if (e.dataTransfer.files?.length > 0) {
+      e.preventDefault();
+      setFileDragOver(false);
+      onLoadTracks(e.dataTransfer.files);
+    }
+  }, [onLoadTracks]);
+
+  const handleFileDragOver = React.useCallback((e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes('Files')) {
+      e.preventDefault();
+      setFileDragOver(true);
+    }
+  }, []);
+
+  const handleFileDragLeave = React.useCallback((e: React.DragEvent) => {
+    if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) {
+      setFileDragOver(false);
+    }
+  }, []);
+
   return (
     <>
       <div className="tracks-header">
         <span>Tracks ({visible.length})</span>
       </div>
-      <div className="tlist">
+      <div
+        className={`tlist ${fileDragOver ? 'file-drag-over' : ''}`}
+        onDrop={handleFileDrop}
+        onDragOver={handleFileDragOver}
+        onDragLeave={handleFileDragLeave}
+      >
         {visible.length === 0 ? (
-          <div className="empty-state">Load your tracks to begin</div>
+          <div className="empty-state">
+            {fileDragOver ? '⬇ Drop audio files here' : 'Load or drop your tracks to begin'}
+          </div>
         ) : (
           <DndContext
             sensors={sensors}
@@ -124,6 +153,9 @@ const TrackList: React.FC<TrackListProps> = ({
               ) : null}
             </DragOverlay>
           </DndContext>
+        )}
+        {fileDragOver && visible.length > 0 && (
+          <div className="file-drop-indicator">⬇ Drop audio files to add</div>
         )}
       </div>
     </>
