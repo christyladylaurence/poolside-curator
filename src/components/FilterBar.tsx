@@ -5,6 +5,8 @@ interface FilterBarProps {
   onFilterChange: (f: string) => void;
   onLoadTracks: (files: FileList) => void;
   onClearAll: () => void;
+  onLoadDemo?: () => void;
+  hasTracks: boolean;
 }
 
 const filters = [
