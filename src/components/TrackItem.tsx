@@ -12,6 +12,7 @@ export interface TrackItemProps {
   onRename: (newName: string) => void;
   onScrub: (pct: number) => void;
   onToggleCutoff: () => void;
+  onToggleChecked: () => void;
   isOverlay?: boolean;
   sortableProps?: Record<string, any>;
 }
@@ -20,7 +21,7 @@ const genreLabels: Record<Genre, string> = { dh: 'DH', lf: 'LF', hy: 'HY' };
 
 const TrackItem: React.FC<TrackItemProps> = ({
   track, displayNum, isPlaying, scrubPercent,
-  onPlay, onDelete, onGenreCycle, onRename, onScrub, onToggleCutoff,
+  onPlay, onDelete, onGenreCycle, onRename, onScrub, onToggleCutoff, onToggleChecked,
   isOverlay, sortableProps,
 }) => {
   const [editing, setEditing] = useState(false);
@@ -97,6 +98,13 @@ const TrackItem: React.FC<TrackItemProps> = ({
           <div className="scrub-bar-fill" style={{ width: `${scrubPercent}%` }} />
         </div>
       </div>
+      <button
+        className={`check-side-btn ${track.checked ? 'active' : ''}`}
+        onClick={e => { e.stopPropagation(); onToggleChecked(); }}
+        title={track.checked ? 'Marked as checked — click to clear' : 'Mark as checked / fine'}
+      >
+        ✓
+      </button>
       <button
         className={`cutoff-side-btn ${track.cutoff ? 'active' : ''}`}
         onClick={e => { e.stopPropagation(); onToggleCutoff(); }}

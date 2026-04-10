@@ -585,6 +585,45 @@
   border-color: rgba(176,96,96,0.3);
 }
 
+/* Check side button — green tick */
+.check-side-btn {
+  width: 36px;
+  flex-shrink: 0;
+  border: 1px solid transparent;
+  border-left: none;
+  border-radius: 0;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  font-size: 18px;
+  font-weight: bold;
+  color: hsl(var(--text-muted));
+  opacity: 0.35;
+}
+.track-row:hover .check-side-btn {
+  opacity: 0.6;
+  border-color: var(--border-custom);
+  background: var(--surface);
+}
+.check-side-btn:hover {
+  opacity: 1 !important;
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.1) !important;
+  border-color: rgba(74, 222, 128, 0.3) !important;
+}
+.check-side-btn.active {
+  opacity: 1 !important;
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.1);
+  border-color: rgba(74, 222, 128, 0.3);
+}
+.track-row .check-side-btn + .cutoff-side-btn {
+  border-radius: 0 4px 4px 0;
+}
+
 /* Cutoff side button — outside the track box */
 .cutoff-side-btn {
   width: 36px;

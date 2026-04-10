@@ -11,6 +11,7 @@ export interface Track {
   file: File;
   originalName?: string | null;
   cutoff?: boolean;
+  checked?: boolean;
 }
 
 export function cleanName(n: string): string {
