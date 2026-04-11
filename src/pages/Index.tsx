@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import BackgroundVideo from '@/components/BackgroundVideo';
 import VideoDropScreen from '@/components/VideoDropScreen';
 import AppHeader from '@/components/AppHeader';
