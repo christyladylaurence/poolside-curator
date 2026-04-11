@@ -28,7 +28,7 @@ const Index: React.FC = () => {
   const isDemo = new URLSearchParams(window.location.search).has('demo');
 
   const [tracks, setTracks] = useState<Track[]>([]);
-  const [filter, setFilter] = useState('all');
+  const [scheduleDate, setScheduleDate] = useState<Date | undefined>(undefined);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoRes, setVideoRes] = useState<{ w: number; h: number; label: string } | null>(null);

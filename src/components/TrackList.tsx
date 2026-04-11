@@ -21,7 +21,7 @@ import { Track } from '@/lib/audio-utils';
 interface TrackListProps {
   tracks: Track[];
   allTracks: Track[];
-  filter: string;
+  
   playingId: string | null;
   scrubPercents: Record<string, number>;
   onPlay: (track: Track) => void;
