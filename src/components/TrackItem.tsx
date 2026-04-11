@@ -63,7 +63,7 @@ const TrackItem: React.FC<TrackItemProps> = ({
           <button className="pbtn" onClick={e => { e.stopPropagation(); onPlay(); }}>
             {isPlaying ? '⏸' : '▶'}
           </button>
-          <div className="tinfo">
+          <div className="tinfo tinfo-centered">
             {editing ? (
               <input
                 ref={inputRef}
@@ -81,16 +81,10 @@ const TrackItem: React.FC<TrackItemProps> = ({
             ) : (
               <div className="tname" onClick={startEdit}>{track.name}</div>
             )}
-            <div className="tmeta">{track.date || track.genre.toUpperCase()}</div>
           </div>
           <div className="vis">
             {[0, 1, 2, 3, 4].map(i => <div key={i} className="vb" />)}
           </div>
-          <div
-            className={`gpip ${track.genre}`}
-            title={`Click to change genre: ${genreLabels[track.genre]}`}
-            onClick={e => { e.stopPropagation(); onGenreCycle(); }}
-          />
           <div className="tdur">{fmt(track.dur)}</div>
           <button className="del-btn" onClick={e => { e.stopPropagation(); onDelete(); }} title="Remove track">
             ✕
