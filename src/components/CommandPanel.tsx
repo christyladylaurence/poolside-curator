@@ -87,10 +87,8 @@ const CommandPanel: React.FC<CommandPanelProps> = ({
             <button className="closex" onClick={onClose}>✕</button>
           </div>
         <div className="cbody">
-          {(state.scheduleDate || state.leadInstrument || state.episodeNumber) && (
+          {(state.scheduleDate || state.leadInstrument) && (
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12, fontSize: 13, color: '#aaa', fontWeight: 500 }}>
-              {state.episodeNumber && <span>#{state.episodeNumber}</span>}
-              {state.episodeNumber && (state.scheduleDate || state.leadInstrument) && <span>·</span>}
               {state.scheduleDate && <span>{state.scheduleDate}</span>}
               {state.scheduleDate && state.leadInstrument && <span>·</span>}
               {state.leadInstrument && <span>Lead: {state.leadInstrument}</span>}
