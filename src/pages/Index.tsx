@@ -467,7 +467,7 @@ const Index: React.FC = () => {
 
       setCpanel(prev => ({ ...prev, mp4Status: 'Reading output…', mp4ProgPct: 96 }));
       const data = await ffmpeg.readFile('output.mp4');
-      const bytes = data as Uint8Array;
+      const bytes = data as unknown as ArrayBuffer;
       const mp4Blob = new Blob([bytes], { type: 'video/mp4' });
       ffmpeg.terminate();
 
