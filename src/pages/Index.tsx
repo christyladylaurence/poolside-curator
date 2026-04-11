@@ -568,7 +568,7 @@ const Index: React.FC = () => {
         <TrackList
           tracks={sorted}
           allTracks={sorted}
-          filter={filter}
+          
           playingId={playingId}
           scrubPercents={scrubPercents}
           onPlay={handlePlay}
