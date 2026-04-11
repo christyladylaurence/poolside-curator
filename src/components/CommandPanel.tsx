@@ -91,14 +91,24 @@ const CommandPanel: React.FC<CommandPanelProps> = ({
                 </>
               )}
 
-              {state.hasVideo && !state.mp4Blob && (
+              {state.hasVideo && !state.mp4Blob && !state.mp4Building && (
                 <button
                   className="download-btn mp4-btn"
                   onClick={onBuildMp4}
-                  disabled={state.mp4Building}
                 >
-                  {state.mp4Building ? 'Building...' : `🎬 Build video (MP4) at ${state.videoLabel} — ready for YouTube`}
+                  🎬 Build video (MP4) at {state.videoLabel} — ready for YouTube
                 </button>
+              )}
+
+              {state.mp4Status && (
+                <div className={`mp4-status on`}>
+                  <span>{state.mp4Status}</span>
+                  {state.mp4ProgPct !== undefined && state.mp4ProgPct < 100 && (
+                    <div className="progress-bar">
+                      <div className="progress-fill" style={{ width: `${state.mp4ProgPct}%` }} />
+                    </div>
+                  )}
+                </div>
               )}
 
               {state.mp4Blob && (
@@ -110,17 +120,6 @@ const CommandPanel: React.FC<CommandPanelProps> = ({
               <button className="download-btn" onClick={onDownloadWav}>
                 ⬇ Download audio only (WAV)
               </button>
-
-              {state.mp4Status && (
-                <div className={`mp4-status ${state.mp4Status ? 'on' : ''}`}>
-                  <span>{state.mp4Status}</span>
-                  {state.mp4ProgPct !== undefined && (
-                    <div className="progress-bar">
-                      <div className="progress-fill" style={{ width: `${state.mp4ProgPct}%` }} />
-                    </div>
-                  )}
-                </div>
-              )}
             </>
           )}
         </div>
