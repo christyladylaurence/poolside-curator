@@ -459,6 +459,14 @@ const Index: React.FC = () => {
         wasmURL: new URL('/wasm/ffmpeg-core.wasm', window.location.origin).href,
       });
 
+  useEffect(() => {
+    if (scheduleDate) localStorage.setItem('poolside-scheduleDate', scheduleDate.toISOString());
+    else localStorage.removeItem('poolside-scheduleDate');
+  }, [scheduleDate]);
+
+  useEffect(() => {
+    localStorage.setItem('poolside-leadInstrument', leadInstrument);
+  }, [leadInstrument]);
 
       setCpanel(prev => ({ ...prev, mp4Status: 'Preparing video file…', mp4ProgPct: 18 }));
       const vExt = videoFile.name.toLowerCase().endsWith('.mov') ? 'mov' : 'mp4';
