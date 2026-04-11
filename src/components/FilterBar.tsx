@@ -9,13 +9,15 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 interface FilterBarProps {
   scheduleDate: Date | undefined;
   onScheduleDateChange: (d: Date | undefined) => void;
+  leadInstrument: string;
+  onLeadInstrumentChange: (v: string) => void;
   onLoadTracks: (files: FileList) => void;
   onClearAll: () => void;
   onLoadDemo?: () => void;
   hasTracks: boolean;
 }
 
-const FilterBar: React.FC<FilterBarProps> = ({ scheduleDate, onScheduleDateChange, onLoadTracks, onClearAll, onLoadDemo, hasTracks }) => {
+const FilterBar: React.FC<FilterBarProps> = ({ scheduleDate, onScheduleDateChange, leadInstrument, onLeadInstrumentChange, onLoadTracks, onClearAll, onLoadDemo, hasTracks }) => {
   const fileRef = useRef<HTMLInputElement>(null);
 
   return (
@@ -45,6 +47,15 @@ const FilterBar: React.FC<FilterBarProps> = ({ scheduleDate, onScheduleDateChang
           />
         </PopoverContent>
       </Popover>
+      <span className="bar-label">Lead</span>
+      <input
+        type="text"
+        className="lead-instrument-input"
+        placeholder="e.g. flute, nylon guitar"
+        value={leadInstrument}
+        onChange={e => onLeadInstrumentChange(e.target.value)}
+        style={{ height: 32, fontSize: 13, width: 180, borderRadius: 6, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)', color: 'inherit', padding: '0 8px' }}
+      />
       <button
         className="action-btn load-btn"
         onClick={() => fileRef.current?.click()}
