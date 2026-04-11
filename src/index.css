@@ -911,8 +911,8 @@
 }
 
 .cbox {
-  max-width: 580px;
-  width: 90%;
+  max-width: 860px;
+  width: 94%;
   background: var(--surface-2);
   border: 1px solid var(--border-custom);
   border-radius: 6px;
