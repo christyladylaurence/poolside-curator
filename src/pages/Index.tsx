@@ -473,12 +473,38 @@ const Index: React.FC = () => {
       ffmpeg.terminate();
 
       const today = new Date().toISOString().slice(0, 10);
+      const filename = `poolside-episode-${today}.mp4`;
+
+      // Upload to Cloud Storage for reliable download
+      setCpanel(prev => ({ ...prev, mp4Status: 'Uploading to cloud…', mp4ProgPct: 97 }));
+      let mp4Url: string | undefined;
+      try {
+        const storagePath = `${Date.now()}-${filename}`;
+        const { error: uploadErr } = await supabase.storage
+          .from('episodes')
+          .upload(storagePath, mp4Blob, { contentType: 'video/mp4', upsert: true });
+
+        if (!uploadErr) {
+          const { data: urlData } = supabase.storage
+            .from('episodes')
+            .getPublicUrl(storagePath);
+          mp4Url = urlData?.publicUrl;
+        } else {
+          console.warn('Cloud upload failed, using local blob:', uploadErr.message);
+        }
+      } catch (uploadErr) {
+        console.warn('Cloud upload failed, using local blob:', uploadErr);
+      }
+
       setCpanel(prev => ({
         ...prev,
         mp4Building: false,
         mp4Blob,
-        mp4Filename: `poolside-episode-${today}.mp4`,
-        mp4Status: '✅ MP4 ready — click Download below.',
+        mp4Filename: filename,
+        mp4Url,
+        mp4Status: mp4Url
+          ? '✅ MP4 ready — saved to cloud. Click Download below.'
+          : '✅ MP4 ready — click Download below.',
         mp4ProgPct: 100,
       }));
     } catch (err: any) {
