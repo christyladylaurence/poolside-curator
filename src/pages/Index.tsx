@@ -28,8 +28,11 @@ const Index: React.FC = () => {
   const isDemo = new URLSearchParams(window.location.search).has('demo');
 
   const [tracks, setTracks] = useState<Track[]>([]);
-  const [scheduleDate, setScheduleDate] = useState<Date | undefined>(undefined);
-  const [leadInstrument, setLeadInstrument] = useState('');
+  const [scheduleDate, setScheduleDate] = useState<Date | undefined>(() => {
+    const saved = localStorage.getItem('poolside-scheduleDate');
+    return saved ? new Date(saved) : undefined;
+  });
+  const [leadInstrument, setLeadInstrument] = useState(() => localStorage.getItem('poolside-leadInstrument') || '');
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoRes, setVideoRes] = useState<{ w: number; h: number; label: string } | null>(null);
@@ -76,6 +79,15 @@ const Index: React.FC = () => {
       saveTracks(tracks);
     }
   }, [tracks, isDemo]);
+
+  useEffect(() => {
+    if (scheduleDate) localStorage.setItem('poolside-scheduleDate', scheduleDate.toISOString());
+    else localStorage.removeItem('poolside-scheduleDate');
+  }, [scheduleDate]);
+
+  useEffect(() => {
+    localStorage.setItem('poolside-leadInstrument', leadInstrument);
+  }, [leadInstrument]);
 
   useEffect(() => {
     if (isDemo && tracks.length === 0) {
@@ -455,7 +467,6 @@ const Index: React.FC = () => {
         coreURL: new URL('/wasm/ffmpeg-core.js', window.location.origin).href,
         wasmURL: new URL('/wasm/ffmpeg-core.wasm', window.location.origin).href,
       });
-
 
       setCpanel(prev => ({ ...prev, mp4Status: 'Preparing video file…', mp4ProgPct: 18 }));
       const vExt = videoFile.name.toLowerCase().endsWith('.mov') ? 'mov' : 'mp4';
