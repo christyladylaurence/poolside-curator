@@ -520,7 +520,15 @@ const Index: React.FC = () => {
   }, [cpanel.wavBlob, videoFile]);
 
   const handleDownloadMp4 = useCallback(() => {
-    if (cpanel.mp4Blob && cpanel.mp4Filename) downloadBlob(cpanel.mp4Blob, cpanel.mp4Filename);
+    if (cpanel.mp4Url && cpanel.mp4Filename) {
+      // Download from cloud (more reliable, works even if tab was refreshed)
+      const a = document.createElement('a');
+      a.href = cpanel.mp4Url;
+      a.download = cpanel.mp4Filename;
+      a.click();
+    } else if (cpanel.mp4Blob && cpanel.mp4Filename) {
+      downloadBlob(cpanel.mp4Blob, cpanel.mp4Filename);
+    }
   }, [cpanel]);
 
   return (
