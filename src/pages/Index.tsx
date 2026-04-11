@@ -555,8 +555,8 @@ const Index: React.FC = () => {
           onChangeVideo={handleChangeVideo}
         />
         <FilterBar
-          filter={filter}
-          onFilterChange={setFilter}
+          scheduleDate={scheduleDate}
+          onScheduleDateChange={setScheduleDate}
           onLoadTracks={handleLoadTracks}
           onClearAll={handleClearAll}
           hasTracks={tracks.length > 0}
