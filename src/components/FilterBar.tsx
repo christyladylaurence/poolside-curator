@@ -11,13 +11,15 @@ interface FilterBarProps {
   onScheduleDateChange: (d: Date | undefined) => void;
   leadInstrument: string;
   onLeadInstrumentChange: (v: string) => void;
+  episodeNumber: number;
+  onEpisodeNumberChange: (n: number) => void;
   onLoadTracks: (files: FileList) => void;
   onClearAll: () => void;
   onLoadDemo?: () => void;
   hasTracks: boolean;
 }
 
-const FilterBar: React.FC<FilterBarProps> = ({ scheduleDate, onScheduleDateChange, leadInstrument, onLeadInstrumentChange, onLoadTracks, onClearAll, onLoadDemo, hasTracks }) => {
+const FilterBar: React.FC<FilterBarProps> = ({ scheduleDate, onScheduleDateChange, leadInstrument, onLeadInstrumentChange, episodeNumber, onEpisodeNumberChange, onLoadTracks, onClearAll, onLoadDemo, hasTracks }) => {
   const fileRef = useRef<HTMLInputElement>(null);
 
   return (
@@ -53,6 +55,14 @@ const FilterBar: React.FC<FilterBarProps> = ({ scheduleDate, onScheduleDateChang
         placeholder="e.g. flute, nylon guitar"
         value={leadInstrument}
         onChange={e => onLeadInstrumentChange(e.target.value)}
+      />
+      <span className="bar-label">Ep #</span>
+      <input
+        type="number"
+        className="h-8 w-[60px] rounded-md border border-input bg-background text-[13px] text-foreground placeholder:text-muted-foreground px-3 outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 focus:ring-offset-background text-center"
+        value={episodeNumber}
+        min={1}
+        onChange={e => onEpisodeNumberChange(Math.max(1, parseInt(e.target.value, 10) || 1))}
       />
       <button
         className="action-btn load-btn"

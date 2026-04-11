@@ -11,6 +11,7 @@ import { saveVideo, loadVideo, clearVideo, saveTracks, loadTracks, clearTracks }
 import {
   Track, Genre, cleanName, cleanNameForYouTube, detectGenre, dateOf,
   fmt, fmtSRT, getResLabel, sortTracksByPrefix, getRotatingSuffix, createWAVFile,
+  generateYouTubeMetadata,
 } from '@/lib/audio-utils';
 
 const DEMO_TRACKS: Omit<Track, 'url' | 'file'>[] = [
@@ -43,6 +44,10 @@ const Index: React.FC = () => {
   const [scrubPercents, setScrubPercents] = useState<Record<string, number>>({});
   const [crossfadeDuration, setCrossfadeDuration] = useState(3);
   const [isEnhanced, setIsEnhanced] = useState(false);
+  const [episodeNumber, setEpisodeNumber] = useState(() => {
+    const saved = localStorage.getItem('poolside-episodeNumber');
+    return saved ? parseInt(saved, 10) : 1;
+  });
   const [cpanel, setCpanel] = useState<CommandPanelState>({ open: false, title: '', phase: 'building' });
 
   // Restore video from IndexedDB on mount
@@ -381,24 +386,49 @@ const Index: React.FC = () => {
         chapterTime += t.dur - (i < sortedTracks.length - 1 ? crossfadeDuration : 0);
       });
 
+      const chaptersText = chapters.join('\n');
+
+      // Detect dominant genre
+      const genreCounts: Record<Genre, number> = { dh: 0, lf: 0, hy: 0 };
+      sortedTracks.forEach(t => genreCounts[t.genre]++);
+      const dominantGenre = (Object.entries(genreCounts).sort((a, b) => b[1] - a[1])[0][0]) as Genre;
+
+      // Generate YouTube metadata
+      const ytMeta = generateYouTubeMetadata(
+        sortedTracks,
+        dominantGenre,
+        crossfadeDuration,
+        episodeNumber,
+        leadInstrument.trim() || undefined,
+        scheduleDate,
+        chaptersText,
+      );
+
+      // Increment episode number for next build
+      const nextEp = episodeNumber + 1;
+      setEpisodeNumber(nextEp);
+      localStorage.setItem('poolside-episodeNumber', String(nextEp));
+
       setCpanel({
         open: true,
         title: 'Episode ready!',
         phase: 'ready',
         scheduleDate: dateLbl,
         leadInstrument: leadInstrument.trim() || undefined,
+        episodeNumber,
         tracks: sortedTracks,
-        chapters: chapters.join('\n'),
+        chapters: chaptersText,
         srtText: srtEntries.join('\n'),
         wavBlob,
         wavFilename: `poolside-episode-${today}${leadInstrument.trim() ? '-' + leadInstrument.trim().toLowerCase().replace(/\s+/g, '-') : ''}.wav`,
         hasVideo: !!videoFile,
         videoLabel: videoRes ? `${videoRes.label} (${videoRes.w}×${videoRes.h})` : 'unknown res',
+        ytMeta,
       });
     } catch (err: any) {
       setCpanel({ open: true, title: 'Build failed', phase: 'error', scheduleDate: dateLbl, leadInstrument: leadInstrument.trim() || undefined, errorMsg: err.message });
     }
-  }, [tracks, crossfadeDuration, videoFile, videoRes, leadInstrument]);
+  }, [tracks, crossfadeDuration, videoFile, videoRes, leadInstrument, scheduleDate, episodeNumber]);
 
   // Download helpers
   const downloadBlob = (blob: Blob, filename: string) => {
@@ -576,6 +606,8 @@ const Index: React.FC = () => {
           onScheduleDateChange={setScheduleDate}
           leadInstrument={leadInstrument}
           onLeadInstrumentChange={setLeadInstrument}
+          episodeNumber={episodeNumber}
+          onEpisodeNumberChange={(n) => { setEpisodeNumber(n); localStorage.setItem('poolside-episodeNumber', String(n)); }}
           onLoadTracks={handleLoadTracks}
           onClearAll={handleClearAll}
           hasTracks={tracks.length > 0}

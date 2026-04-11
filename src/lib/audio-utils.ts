@@ -98,6 +98,122 @@ export function getRotatingSuffix(genre: Genre, index: number): string {
   return pool[index % pool.length];
 }
 
+export interface YouTubeMetadata {
+  title: string;
+  description: string;
+  tags: string;
+  thumbnailText: string;
+}
+
+const genreLabels: Record<Genre, string> = { dh: 'Deep House', lf: 'Lofi', hy: 'Chillout' };
+
+const genreHashtags: Record<Genre, string[]> = {
+  dh: ['#DeepHouse', '#ChillMix', '#HouseMusic', '#DeepHouseVibes', '#ChillHouse'],
+  lf: ['#Lofi', '#LofiBeats', '#StudyMusic', '#ChillBeats', '#LofiHipHop'],
+  hy: ['#Chillout', '#AmbientHouse', '#ElectronicChill', '#Downtempo', '#ChillVibes'],
+};
+
+const genreHooks: Record<Genre, string[]> = {
+  dh: [
+    'deep house for focus & relaxation',
+    'smooth deep house vibes to unwind',
+    'deep house grooves for your evening',
+  ],
+  lf: [
+    'lofi beats to study and relax to',
+    'chill lofi vibes for focus',
+    'mellow lofi tunes for your day',
+  ],
+  hy: [
+    'chillout electronic for calm moments',
+    'ambient house to drift away',
+    'downtempo vibes for deep relaxation',
+  ],
+};
+
+export function generateYouTubeMetadata(
+  tracks: Track[],
+  genre: Genre,
+  crossfadeDuration: number,
+  episodeNumber: number,
+  leadInstrument?: string,
+  scheduleDate?: Date,
+  chapters?: string,
+): YouTubeMetadata {
+  // Runtime
+  const totalS = tracks.reduce((s, t) => s + (t.dur || 0), 0);
+  const overlapS = Math.max(0, (tracks.length - 1) * crossfadeDuration);
+  const effectiveDur = Math.max(0, totalS - overlapS);
+  const runtimeH = Math.floor(effectiveDur / 3600);
+  const runtimeM = Math.floor((effectiveDur % 3600) / 60);
+  const runtimeLabel = runtimeH >= 1 ? `${runtimeH} Hour${runtimeH > 1 ? 's' : ''}` : `${runtimeM} Min`;
+
+  const year = (scheduleDate ?? new Date()).getFullYear();
+  const genreLabel = genreLabels[genre];
+  const suffix = getRotatingSuffix(genre, episodeNumber);
+  const instrPart = leadInstrument ? ` · ${leadInstrument} Edition` : '';
+
+  // Title
+  const title = `${genreLabel} Mix ${year} · ${suffix}${instrPart} [${runtimeLabel}]`;
+
+  // Description
+  const hookPool = genreHooks[genre];
+  const hook = hookPool[episodeNumber % hookPool.length];
+  const hashtags = genreHashtags[genre].join(' ');
+
+  const descParts: string[] = [
+    `${runtimeLabel} of ${hook}.`,
+    '',
+    `🎧 Poolside Sessions #${episodeNumber}`,
+    leadInstrument ? `🎵 Lead instrument: ${leadInstrument}` : '',
+    '',
+    '⏱️ Tracklist:',
+    chapters || '',
+    '',
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━',
+    '',
+    '🔔 Subscribe for weekly mixes',
+    '👍 Like & share if you enjoy these vibes',
+    '',
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━',
+    '',
+    hashtags,
+  ];
+  const description = descParts.filter(line => line !== undefined).join('\n');
+
+  // Tags (max 500 chars)
+  const baseTags = [
+    `${genreLabel.toLowerCase()} mix`, `${genreLabel.toLowerCase()} mix ${year}`,
+    'chill mix', 'relaxing music', `${genreLabel.toLowerCase()}`,
+    `${genreLabel.toLowerCase()} music`, 'study music', 'focus music',
+    'background music', 'poolside sessions',
+  ];
+  if (leadInstrument) {
+    baseTags.push(`${leadInstrument.toLowerCase()} music`, `${genreLabel.toLowerCase()} ${leadInstrument.toLowerCase()}`);
+  }
+  // Add track name keywords
+  tracks.forEach(t => {
+    const words = t.name.split(/[\s-]+/).filter(w => w.length > 3);
+    words.forEach(w => baseTags.push(w.toLowerCase()));
+  });
+  // Dedupe and trim to 500 chars
+  const unique = [...new Set(baseTags)];
+  let tags = '';
+  for (const tag of unique) {
+    const next = tags ? `${tags}, ${tag}` : tag;
+    if (next.length > 500) break;
+    tags = next;
+  }
+
+  // Thumbnail text
+  const thumbParts = [genreLabel.toUpperCase()];
+  if (leadInstrument) thumbParts.push(leadInstrument.toUpperCase());
+  thumbParts.push(runtimeLabel.toUpperCase());
+  const thumbnailText = thumbParts.join(' · ');
+
+  return { title, description, tags, thumbnailText };
+}
+
 export function createWAVFile(audioBuffer: AudioBuffer): ArrayBuffer {
   const numberOfChannels = audioBuffer.numberOfChannels;
   const sampleRate = audioBuffer.sampleRate;
