@@ -11,6 +11,7 @@ import { saveVideo, loadVideo, clearVideo, saveTracks, loadTracks, clearTracks }
 import {
   Track, Genre, cleanName, cleanNameForYouTube, detectGenre, dateOf,
   fmt, fmtSRT, getResLabel, sortTracksByPrefix, getRotatingSuffix, createWAVFile,
+  generateYouTubeMetadata,
 } from '@/lib/audio-utils';
 
 const DEMO_TRACKS: Omit<Track, 'url' | 'file'>[] = [
@@ -43,6 +44,10 @@ const Index: React.FC = () => {
   const [scrubPercents, setScrubPercents] = useState<Record<string, number>>({});
   const [crossfadeDuration, setCrossfadeDuration] = useState(3);
   const [isEnhanced, setIsEnhanced] = useState(false);
+  const [episodeNumber, setEpisodeNumber] = useState(() => {
+    const saved = localStorage.getItem('poolside-episodeNumber');
+    return saved ? parseInt(saved, 10) : 1;
+  });
   const [cpanel, setCpanel] = useState<CommandPanelState>({ open: false, title: '', phase: 'building' });
 
   // Restore video from IndexedDB on mount
