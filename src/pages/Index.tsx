@@ -412,6 +412,17 @@ const Index: React.FC = () => {
 
   const handleBuildMp4 = useCallback(async () => {
     if (!cpanel.wavBlob || !videoFile) return;
+
+    // Check for SharedArrayBuffer support (required by FFmpeg WASM)
+    if (typeof SharedArrayBuffer === 'undefined') {
+      setCpanel(prev => ({
+        ...prev,
+        mp4Building: false,
+        mp4Status: '⚠️ Your browser blocked MP4 building (SharedArrayBuffer not available). Try opening this page directly in a new tab, or use Chrome/Edge. You can still download the WAV and mux it with your video in any video editor.',
+      }));
+      return;
+    }
+
     setCpanel(prev => ({ ...prev, mp4Building: true, mp4Status: 'Loading FFmpeg (first time may take ~30s)...', mp4ProgPct: 5 }));
 
     try {
@@ -432,6 +443,10 @@ const Index: React.FC = () => {
             mp4ProgPct: Math.min(95, 30 + progress * 65),
           }));
         }
+      });
+
+      ffmpeg.on('log', ({ message }: { message: string }) => {
+        console.log('[FFmpeg]', message);
       });
 
       setCpanel(prev => ({ ...prev, mp4Status: 'Downloading FFmpeg core...', mp4ProgPct: 10 }));
@@ -464,14 +479,16 @@ const Index: React.FC = () => {
         mp4Building: false,
         mp4Blob,
         mp4Filename: `poolside-episode-${today}.mp4`,
-        mp4Status: 'MP4 ready. Straight to YouTube.',
+        mp4Status: '✅ MP4 ready. Straight to YouTube.',
         mp4ProgPct: 100,
       }));
     } catch (err: any) {
+      console.error('MP4 build error:', err);
       setCpanel(prev => ({
         ...prev,
         mp4Building: false,
-        mp4Status: `MP4 build failed: ${err.message}. You can still download the WAV above.`,
+        mp4Status: `❌ MP4 build failed: ${err?.message || 'Unknown error'}. You can still download the WAV above and combine it with your video in any editor.`,
+        mp4ProgPct: undefined,
       }));
     }
   }, [cpanel.wavBlob, videoFile]);
