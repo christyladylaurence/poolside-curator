@@ -28,12 +28,11 @@ const FilterBar: React.FC<FilterBarProps> = ({ scheduleDate, onScheduleDateChang
           <Button
             variant="outline"
             className={cn(
-              "w-[200px] justify-start text-left font-normal",
+              "h-8 w-[180px] justify-start text-left text-[13px] font-normal rounded-md border-input bg-background",
               !scheduleDate && "text-muted-foreground"
             )}
-            style={{ height: 32, fontSize: 13 }}
           >
-            <CalendarIcon className="mr-2 h-4 w-4" />
+            <CalendarIcon className="mr-2 h-3.5 w-3.5 opacity-60" />
             {scheduleDate ? format(scheduleDate, 'dd/MM/yyyy') : 'Pick a date'}
           </Button>
         </PopoverTrigger>
@@ -50,11 +49,10 @@ const FilterBar: React.FC<FilterBarProps> = ({ scheduleDate, onScheduleDateChang
       <span className="bar-label">Lead</span>
       <input
         type="text"
-        className="lead-instrument-input"
+        className="h-8 w-[180px] rounded-md border border-input bg-background text-[13px] text-foreground placeholder:text-muted-foreground px-3 outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 focus:ring-offset-background"
         placeholder="e.g. flute, nylon guitar"
         value={leadInstrument}
         onChange={e => onLeadInstrumentChange(e.target.value)}
-        style={{ height: 32, fontSize: 13, width: 180, borderRadius: 6, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)', color: 'inherit', padding: '0 8px' }}
       />
       <button
         className="action-btn load-btn"
