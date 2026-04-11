@@ -290,7 +290,8 @@ const Index: React.FC = () => {
     if (!tracks.length) return;
     const sortedTracks = sortTracksByPrefix(tracks);
 
-    setCpanel({ open: true, title: 'Building episode...', phase: 'building', progressText: 'Fetching and decoding tracks...', progressPct: 0 });
+    const dateLbl = scheduleDate ? scheduleDate.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' }) : undefined;
+    setCpanel({ open: true, title: 'Building episode...', phase: 'building', scheduleDate: dateLbl, leadInstrument: leadInstrument.trim() || undefined, progressText: 'Fetching and decoding tracks...', progressPct: 0 });
 
     try {
       if (!audioContextRef.current) audioContextRef.current = new AudioContext();
@@ -372,6 +373,8 @@ const Index: React.FC = () => {
         open: true,
         title: 'Episode ready!',
         phase: 'ready',
+        scheduleDate: dateLbl,
+        leadInstrument: leadInstrument.trim() || undefined,
         tracks: sortedTracks,
         chapters: chapters.join('\n'),
         srtText: srtEntries.join('\n'),

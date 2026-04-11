@@ -5,6 +5,8 @@ export interface CommandPanelState {
   open: boolean;
   title: string;
   phase: 'building' | 'ready' | 'error';
+  scheduleDate?: string;
+  leadInstrument?: string;
   progressText?: string;
   progressPct?: number;
   chapters?: string;
@@ -46,6 +48,13 @@ const CommandPanel: React.FC<CommandPanelProps> = ({
           <button className="closex" onClick={onClose}>✕</button>
         </div>
         <div className="cbody">
+          {(state.scheduleDate || state.leadInstrument) && (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12, fontSize: 13, color: '#aaa', fontWeight: 500 }}>
+              {state.scheduleDate && <span>{state.scheduleDate}</span>}
+              {state.scheduleDate && state.leadInstrument && <span>·</span>}
+              {state.leadInstrument && <span>Lead: {state.leadInstrument}</span>}
+            </div>
+          )}
           {state.phase === 'building' && (
             <>
               <div className="progress-text">{state.progressText}</div>
