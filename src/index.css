@@ -557,7 +557,7 @@
 
 .tdur {
   font-size: 10px;
-  color: hsl(var(--text-muted));
+  color: hsl(var(--foreground));
   flex-shrink: 0;
   min-width: 34px;
   text-align: right;
