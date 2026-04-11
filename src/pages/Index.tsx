@@ -28,8 +28,11 @@ const Index: React.FC = () => {
   const isDemo = new URLSearchParams(window.location.search).has('demo');
 
   const [tracks, setTracks] = useState<Track[]>([]);
-  const [scheduleDate, setScheduleDate] = useState<Date | undefined>(undefined);
-  const [leadInstrument, setLeadInstrument] = useState('');
+  const [scheduleDate, setScheduleDate] = useState<Date | undefined>(() => {
+    const saved = localStorage.getItem('poolside-scheduleDate');
+    return saved ? new Date(saved) : undefined;
+  });
+  const [leadInstrument, setLeadInstrument] = useState(() => localStorage.getItem('poolside-leadInstrument') || '');
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoRes, setVideoRes] = useState<{ w: number; h: number; label: string } | null>(null);
