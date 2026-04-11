@@ -452,13 +452,7 @@ const Index: React.FC = () => {
         coreURL: new URL('/wasm/ffmpeg-core.js', window.location.origin).href,
         wasmURL: new URL('/wasm/ffmpeg-core.wasm', window.location.origin).href,
       });
-            setCpanel(prev => ({ ...prev, mp4Status: 'Retrying FFmpeg download…' }));
-            return loadFFmpeg(attempt + 1);
-          }
-          throw new Error('Failed to load FFmpeg core. Please check your internet connection and try again.');
-        }
-      };
-      await loadFFmpeg();
+
 
       setCpanel(prev => ({ ...prev, mp4Status: 'Preparing video file…', mp4ProgPct: 18 }));
       const vExt = videoFile.name.toLowerCase().endsWith('.mov') ? 'mov' : 'mp4';
