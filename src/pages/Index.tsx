@@ -81,6 +81,15 @@ const Index: React.FC = () => {
   }, [tracks, isDemo]);
 
   useEffect(() => {
+    if (scheduleDate) localStorage.setItem('poolside-scheduleDate', scheduleDate.toISOString());
+    else localStorage.removeItem('poolside-scheduleDate');
+  }, [scheduleDate]);
+
+  useEffect(() => {
+    localStorage.setItem('poolside-leadInstrument', leadInstrument);
+  }, [leadInstrument]);
+
+  useEffect(() => {
     if (isDemo && tracks.length === 0) {
       const dummyFile = new File([], 'demo.mp3', { type: 'audio/mpeg' });
       setTracks(DEMO_TRACKS.map(t => ({ ...t, url: '', file: dummyFile } as Track)));
