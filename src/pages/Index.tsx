@@ -445,19 +445,13 @@ const Index: React.FC = () => {
         console.log('[FFmpeg]', message);
       });
 
-      setCpanel(prev => ({ ...prev, mp4Status: 'Downloading FFmpeg core…', mp4ProgPct: 8 }));
+      setCpanel(prev => ({ ...prev, mp4Status: 'Loading FFmpeg core…', mp4ProgPct: 8 }));
 
-      // Load the single-threaded core (no SharedArrayBuffer required)
-      const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
-      const loadFFmpeg = async (attempt = 1): Promise<void> => {
-        try {
-          await ffmpeg.load({
-            coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-            wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-          });
-        } catch (err) {
-          if (attempt < 2) {
-            console.warn('[FFmpeg] Load attempt', attempt, 'failed, retrying…', err);
+      // Load from bundled local files — no external CDN needed
+      await ffmpeg.load({
+        coreURL: new URL('/wasm/ffmpeg-core.js', window.location.origin).href,
+        wasmURL: new URL('/wasm/ffmpeg-core.wasm', window.location.origin).href,
+      });
             setCpanel(prev => ({ ...prev, mp4Status: 'Retrying FFmpeg download…' }));
             return loadFFmpeg(attempt + 1);
           }
