@@ -604,6 +604,7 @@ const Index: React.FC = () => {
 
       <CommandPanel
         state={cpanel}
+        videoUrl={videoUrl}
         onClose={() => setCpanel(prev => ({ ...prev, open: false }))}
         onDownloadWav={handleDownloadWav}
         onCopyChapters={handleCopyChapters}
