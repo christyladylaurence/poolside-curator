@@ -345,8 +345,8 @@ const Index: React.FC = () => {
       const rendered = await offlineCtx.startRendering();
       const wavData = createWAVFile(rendered);
       const wavBlob = new Blob([wavData], { type: 'audio/wav' });
-      const now = new Date();
-      const today = `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}`;
+      const dateForName = scheduleDate ?? new Date();
+      const today = `${String(dateForName.getDate()).padStart(2, '0')}-${String(dateForName.getMonth() + 1).padStart(2, '0')}-${dateForName.getFullYear()}`;
 
       // Build chapters
       let chapterTime = 0;
@@ -473,8 +473,8 @@ const Index: React.FC = () => {
       const mp4Blob = new Blob([bytes], { type: 'video/mp4' });
       ffmpeg.terminate();
 
-      const now2 = new Date();
-      const today = `${String(now2.getDate()).padStart(2, '0')}-${String(now2.getMonth() + 1).padStart(2, '0')}-${now2.getFullYear()}`;
+      const dateForName2 = scheduleDate ?? new Date();
+      const today = `${String(dateForName2.getDate()).padStart(2, '0')}-${String(dateForName2.getMonth() + 1).padStart(2, '0')}-${dateForName2.getFullYear()}`;
       const filename = `poolside-episode-${today}.mp4`;
 
       // Upload to Cloud Storage for reliable download
