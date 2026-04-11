@@ -1,26 +1,19 @@
 
 
-## Bundle FFmpeg locally — no more external CDN
+## Add schedule date and lead instrument to the build episode panel
 
-**What this fixes**: Right now, every time you click "Build MP4," the app downloads ~30MB of FFmpeg files from an external server (jsdelivr). If that server is slow or down, the build fails. By bundling these files directly into the app, the build becomes fully self-contained and instant — no external downloads needed.
+**Problem**: When building multiple episodes in different tabs, the CommandPanel ("Episode ready!" screen) doesn't show which date or lead instrument the episode is for, making tabs indistinguishable.
 
-**How it works**: The FFmpeg package is already installed in the project. We just need to copy the actual files into the app's `public/` folder and point the code at them instead of the CDN.
+**Solution**: Pass `scheduleDate` and `leadInstrument` into the CommandPanel state and display them as a summary line at the top of the panel body.
 
----
+### Changes
 
-### Steps
+**1. `src/components/CommandPanel.tsx`**
+- Add `scheduleDate?: string` and `leadInstrument?: string` to the `CommandPanelState` interface
+- Display a subtitle line below the title showing the date (formatted nicely) and lead instrument when available — visible during all phases (building, ready, error)
 
-1. **Copy FFmpeg WASM files to `public/wasm/`**
-   - Copy `ffmpeg-core.js` and `ffmpeg-core.wasm` from the installed `@ffmpeg/core` package into `public/wasm/`
-   - These will be served directly by the app — no internet required
+**2. `src/pages/Index.tsx`**
+- When setting `setCpanel(...)` for the initial "Building episode..." state and the final "Episode ready!" state, include `scheduleDate` (formatted as a readable string) and `leadInstrument` values from component state
 
-2. **Update `src/pages/Index.tsx`**
-   - Remove the CDN URL and retry logic (no longer needed)
-   - Load the files from `/wasm/ffmpeg-core.js` and `/wasm/ffmpeg-core.wasm` instead
-   - Simplify the loading code since failures from network issues are eliminated
-
-3. **Update `vite.config.ts`**
-   - Add proper headers so the browser accepts the WASM file (`application/wasm` content type) — Vite handles this automatically for files in `public/`, so this may not need changes
-
-**Result**: The "Build MP4" button will work reliably every time, with no dependency on external servers.
+**Result**: Each tab's build panel will clearly show something like "Thursday 12 June · Lead: Guitar" at the top, making it easy to tell episodes apart when working in bulk.
 
