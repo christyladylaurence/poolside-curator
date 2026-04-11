@@ -1,5 +1,5 @@
-import React from 'react';
-import { Track, fmt } from '@/lib/audio-utils';
+import React, { useState } from 'react';
+import { Track, fmt, YouTubeMetadata } from '@/lib/audio-utils';
 
 export interface CommandPanelState {
   open: boolean;
@@ -23,6 +23,8 @@ export interface CommandPanelState {
   mp4Filename?: string;
   mp4Building?: boolean;
   mp4Url?: string;
+  ytMeta?: YouTubeMetadata;
+  episodeNumber?: number;
 }
 
 interface CommandPanelProps {
@@ -34,6 +36,23 @@ interface CommandPanelProps {
   onDownloadSrt: () => void;
   onBuildMp4: () => void;
   onDownloadMp4: () => void;
+}
+
+function CopyButton({ label, getText }: { label: string; getText: () => string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      className="copy-btn"
+      style={{ flex: 1 }}
+      onClick={() => {
+        navigator.clipboard.writeText(getText());
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      }}
+    >
+      {copied ? '✓ Copied' : label}
+    </button>
+  );
 }
 
 const CommandPanel: React.FC<CommandPanelProps> = ({
@@ -67,8 +86,10 @@ const CommandPanel: React.FC<CommandPanelProps> = ({
           <button className="closex" onClick={onClose}>✕</button>
         </div>
         <div className="cbody">
-          {(state.scheduleDate || state.leadInstrument) && (
+          {(state.scheduleDate || state.leadInstrument || state.episodeNumber) && (
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12, fontSize: 13, color: '#aaa', fontWeight: 500 }}>
+              {state.episodeNumber && <span>#{state.episodeNumber}</span>}
+              {state.episodeNumber && (state.scheduleDate || state.leadInstrument) && <span>·</span>}
               {state.scheduleDate && <span>{state.scheduleDate}</span>}
               {state.scheduleDate && state.leadInstrument && <span>·</span>}
               {state.leadInstrument && <span>Lead: {state.leadInstrument}</span>}
@@ -92,6 +113,26 @@ const CommandPanel: React.FC<CommandPanelProps> = ({
 
           {state.phase === 'ready' && (
             <>
+              {/* YouTube Title */}
+              {state.ytMeta && (
+                <>
+                  <div className="clbl">YouTube title</div>
+                  <div className="cmd">{state.ytMeta.title}</div>
+                  <CopyButton label="Copy title" getText={() => state.ytMeta!.title} />
+                </>
+              )}
+
+              {/* Thumbnail suggestion */}
+              {state.ytMeta && (
+                <>
+                  <div className="clbl">Thumbnail text</div>
+                  <div className="cmd" style={{ fontSize: 14, fontWeight: 600, letterSpacing: '0.08em' }}>
+                    {state.ytMeta.thumbnailText}
+                  </div>
+                  <CopyButton label="Copy thumbnail text" getText={() => state.ytMeta!.thumbnailText} />
+                </>
+              )}
+
               <div className="clbl">Track order</div>
               <div className="order-list">
                 {state.tracks?.map((t, i) => (
@@ -117,6 +158,26 @@ const CommandPanel: React.FC<CommandPanelProps> = ({
                       Download SRT
                     </button>
                   </div>
+                </>
+              )}
+
+              {/* YouTube Description */}
+              {state.ytMeta && (
+                <>
+                  <div className="clbl">YouTube description</div>
+                  <div className="cmd" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 200, overflowY: 'auto' }}>
+                    {state.ytMeta.description}
+                  </div>
+                  <CopyButton label="Copy description" getText={() => state.ytMeta!.description} />
+                </>
+              )}
+
+              {/* YouTube Tags */}
+              {state.ytMeta && (
+                <>
+                  <div className="clbl">YouTube tags <span style={{ opacity: 0.5 }}>({state.ytMeta.tags.length}/500 chars)</span></div>
+                  <div className="cmd" style={{ fontSize: 11 }}>{state.ytMeta.tags}</div>
+                  <CopyButton label="Copy tags" getText={() => state.ytMeta!.tags} />
                 </>
               )}
 
