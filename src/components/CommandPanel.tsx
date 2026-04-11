@@ -133,53 +133,58 @@ const CommandPanel: React.FC<CommandPanelProps> = ({
                 </>
               )}
 
-              <div className="clbl">Track order</div>
-              <div className="order-list">
-                {state.tracks?.map((t, i) => (
-                  <div key={t.id} className="order-item">
-                    <span className="num">{i + 1}.</span>
-                    <span>{t.name}</span>
-                    <span className="dur">{fmt(t.dur)}</span>
+              {/* Two-column: Tracklist vs YouTube Description preview */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                {/* Left: plain tracklist */}
+                <div>
+                  <div className="clbl" style={{ marginTop: 0 }}>Tracklist</div>
+                  <div className="cmd" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 280, overflowY: 'auto', fontSize: 11 }}>
+                    {state.tracks?.map((t, i) => `${i + 1}. ${t.name} (${fmt(t.dur)})`).join('\n')}
                   </div>
-                ))}
+                  <CopyButton label="Copy tracklist" getText={() =>
+                    state.tracks?.map((t, i) => `${i + 1}. ${t.name} (${fmt(t.dur)})`).join('\n') || ''
+                  } />
+
+                  {state.chapters && (
+                    <>
+                      <div className="clbl">YouTube chapters</div>
+                      <div className="cmd" style={{ whiteSpace: 'pre-wrap', maxHeight: 200, overflowY: 'auto', fontSize: 11 }}>
+                        {state.chapters}
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button className="copy-btn" style={{ flex: 1 }} onClick={onCopyChapters}>
+                          Copy chapters
+                        </button>
+                        <button className="copy-btn" style={{ flex: 1 }} onClick={onDownloadSrt}>
+                          Download SRT
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Right: full YouTube description preview */}
+                <div>
+                  <div className="clbl" style={{ marginTop: 0 }}>YouTube description preview</div>
+                  {state.ytMeta && (
+                    <>
+                      <div className="cmd" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 400, overflowY: 'auto', fontSize: 11 }}>
+                        {state.ytMeta.description}
+                      </div>
+                      <CopyButton label="Copy full description" getText={() => state.ytMeta!.description} />
+                    </>
+                  )}
+
+                  {/* YouTube Tags */}
+                  {state.ytMeta && (
+                    <>
+                      <div className="clbl">YouTube tags <span style={{ opacity: 0.5 }}>({state.ytMeta.tags.length}/500)</span></div>
+                      <div className="cmd" style={{ fontSize: 11 }}>{state.ytMeta.tags}</div>
+                      <CopyButton label="Copy tags" getText={() => state.ytMeta!.tags} />
+                    </>
+                  )}
+                </div>
               </div>
-
-              {state.chapters && (
-                <>
-                  <div className="clbl">YouTube chapters</div>
-                  <div className="cmd" style={{ cursor: 'pointer' }} title="Click to copy"
-                    dangerouslySetInnerHTML={{ __html: state.chapters.replace(/\n/g, '<br>') }}
-                  />
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button className="copy-btn" style={{ flex: 1 }} onClick={onCopyChapters}>
-                      Copy chapters
-                    </button>
-                    <button className="copy-btn" style={{ flex: 1 }} onClick={onDownloadSrt}>
-                      Download SRT
-                    </button>
-                  </div>
-                </>
-              )}
-
-              {/* YouTube Description */}
-              {state.ytMeta && (
-                <>
-                  <div className="clbl">YouTube description</div>
-                  <div className="cmd" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 200, overflowY: 'auto' }}>
-                    {state.ytMeta.description}
-                  </div>
-                  <CopyButton label="Copy description" getText={() => state.ytMeta!.description} />
-                </>
-              )}
-
-              {/* YouTube Tags */}
-              {state.ytMeta && (
-                <>
-                  <div className="clbl">YouTube tags <span style={{ opacity: 0.5 }}>({state.ytMeta.tags.length}/500 chars)</span></div>
-                  <div className="cmd" style={{ fontSize: 11 }}>{state.ytMeta.tags}</div>
-                  <CopyButton label="Copy tags" getText={() => state.ytMeta!.tags} />
-                </>
-              )}
 
               {state.hasVideo && !state.mp4Blob && !state.mp4Building && (
                 <button
