@@ -427,7 +427,7 @@ const Index: React.FC = () => {
     try {
       // Use installed packages instead of CDN imports
       const { FFmpeg } = await import('@ffmpeg/ffmpeg');
-      const { fetchFile, toBlobURL } = await import('@ffmpeg/util');
+      const { fetchFile } = await import('@ffmpeg/util');
 
       const ffmpeg = new FFmpeg();
 
