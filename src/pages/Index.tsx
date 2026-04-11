@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import BackgroundVideo from '@/components/BackgroundVideo';
 import VideoDropScreen from '@/components/VideoDropScreen';
 import AppHeader from '@/components/AppHeader';
@@ -472,12 +473,38 @@ const Index: React.FC = () => {
       ffmpeg.terminate();
 
       const today = new Date().toISOString().slice(0, 10);
+      const filename = `poolside-episode-${today}.mp4`;
+
+      // Upload to Cloud Storage for reliable download
+      setCpanel(prev => ({ ...prev, mp4Status: 'Uploading to cloud…', mp4ProgPct: 97 }));
+      let mp4Url: string | undefined;
+      try {
+        const storagePath = `${Date.now()}-${filename}`;
+        const { error: uploadErr } = await supabase.storage
+          .from('episodes')
+          .upload(storagePath, mp4Blob, { contentType: 'video/mp4', upsert: true });
+
+        if (!uploadErr) {
+          const { data: urlData } = supabase.storage
+            .from('episodes')
+            .getPublicUrl(storagePath);
+          mp4Url = urlData?.publicUrl;
+        } else {
+          console.warn('Cloud upload failed, using local blob:', uploadErr.message);
+        }
+      } catch (uploadErr) {
+        console.warn('Cloud upload failed, using local blob:', uploadErr);
+      }
+
       setCpanel(prev => ({
         ...prev,
         mp4Building: false,
         mp4Blob,
-        mp4Filename: `poolside-episode-${today}.mp4`,
-        mp4Status: '✅ MP4 ready — click Download below.',
+        mp4Filename: filename,
+        mp4Url,
+        mp4Status: mp4Url
+          ? '✅ MP4 ready — saved to cloud. Click Download below.'
+          : '✅ MP4 ready — click Download below.',
         mp4ProgPct: 100,
       }));
     } catch (err: any) {
@@ -493,7 +520,15 @@ const Index: React.FC = () => {
   }, [cpanel.wavBlob, videoFile]);
 
   const handleDownloadMp4 = useCallback(() => {
-    if (cpanel.mp4Blob && cpanel.mp4Filename) downloadBlob(cpanel.mp4Blob, cpanel.mp4Filename);
+    if (cpanel.mp4Url && cpanel.mp4Filename) {
+      // Download from cloud (more reliable, works even if tab was refreshed)
+      const a = document.createElement('a');
+      a.href = cpanel.mp4Url;
+      a.download = cpanel.mp4Filename;
+      a.click();
+    } else if (cpanel.mp4Blob && cpanel.mp4Filename) {
+      downloadBlob(cpanel.mp4Blob, cpanel.mp4Filename);
+    }
   }, [cpanel]);
 
   return (

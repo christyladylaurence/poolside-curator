@@ -20,6 +20,7 @@ export interface CommandPanelState {
   mp4Blob?: Blob;
   mp4Filename?: string;
   mp4Building?: boolean;
+  mp4Url?: string;
 }
 
 interface CommandPanelProps {
