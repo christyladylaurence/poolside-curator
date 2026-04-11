@@ -386,24 +386,49 @@ const Index: React.FC = () => {
         chapterTime += t.dur - (i < sortedTracks.length - 1 ? crossfadeDuration : 0);
       });
 
+      const chaptersText = chapters.join('\n');
+
+      // Detect dominant genre
+      const genreCounts: Record<Genre, number> = { dh: 0, lf: 0, hy: 0 };
+      sortedTracks.forEach(t => genreCounts[t.genre]++);
+      const dominantGenre = (Object.entries(genreCounts).sort((a, b) => b[1] - a[1])[0][0]) as Genre;
+
+      // Generate YouTube metadata
+      const ytMeta = generateYouTubeMetadata(
+        sortedTracks,
+        dominantGenre,
+        crossfadeDuration,
+        episodeNumber,
+        leadInstrument.trim() || undefined,
+        scheduleDate,
+        chaptersText,
+      );
+
+      // Increment episode number for next build
+      const nextEp = episodeNumber + 1;
+      setEpisodeNumber(nextEp);
+      localStorage.setItem('poolside-episodeNumber', String(nextEp));
+
       setCpanel({
         open: true,
         title: 'Episode ready!',
         phase: 'ready',
         scheduleDate: dateLbl,
         leadInstrument: leadInstrument.trim() || undefined,
+        episodeNumber,
         tracks: sortedTracks,
-        chapters: chapters.join('\n'),
+        chapters: chaptersText,
         srtText: srtEntries.join('\n'),
         wavBlob,
         wavFilename: `poolside-episode-${today}${leadInstrument.trim() ? '-' + leadInstrument.trim().toLowerCase().replace(/\s+/g, '-') : ''}.wav`,
         hasVideo: !!videoFile,
         videoLabel: videoRes ? `${videoRes.label} (${videoRes.w}×${videoRes.h})` : 'unknown res',
+        ytMeta,
       });
     } catch (err: any) {
       setCpanel({ open: true, title: 'Build failed', phase: 'error', scheduleDate: dateLbl, leadInstrument: leadInstrument.trim() || undefined, errorMsg: err.message });
     }
-  }, [tracks, crossfadeDuration, videoFile, videoRes, leadInstrument]);
+  }, [tracks, crossfadeDuration, videoFile, videoRes, leadInstrument, scheduleDate, episodeNumber]);
 
   // Download helpers
   const downloadBlob = (blob: Blob, filename: string) => {
