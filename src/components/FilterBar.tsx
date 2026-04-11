@@ -1,39 +1,50 @@
 import React, { useRef } from 'react';
+import { format } from 'date-fns';
+import { CalendarIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface FilterBarProps {
-  filter: string;
-  onFilterChange: (f: string) => void;
+  scheduleDate: Date | undefined;
+  onScheduleDateChange: (d: Date | undefined) => void;
   onLoadTracks: (files: FileList) => void;
   onClearAll: () => void;
   onLoadDemo?: () => void;
   hasTracks: boolean;
 }
 
-const filters = [
-  { key: 'all', label: 'All' },
-  { key: 'dh', label: 'Deep House' },
-  { key: 'lf', label: 'Lo-Fi' },
-  { key: 'hy', label: 'Hybrid' },
-];
-
-const FilterBar: React.FC<FilterBarProps> = ({ filter, onFilterChange, onLoadTracks, onClearAll, onLoadDemo, hasTracks }) => {
+const FilterBar: React.FC<FilterBarProps> = ({ scheduleDate, onScheduleDateChange, onLoadTracks, onClearAll, onLoadDemo, hasTracks }) => {
   const fileRef = useRef<HTMLInputElement>(null);
 
   return (
     <div className="load-bar">
-      <span className="bar-label">Filter</span>
-      <div style={{ display: 'flex', gap: 6 }}>
-        {filters.map(f => (
-          <button
-            key={f.key}
-            className={`fbtn ${filter === f.key ? 'on' : ''}`}
-            data-g={f.key}
-            onClick={() => onFilterChange(f.key)}
+      <span className="bar-label">Schedule</span>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            className={cn(
+              "w-[200px] justify-start text-left font-normal",
+              !scheduleDate && "text-muted-foreground"
+            )}
+            style={{ height: 32, fontSize: 13 }}
           >
-            {f.label}
-          </button>
-        ))}
-      </div>
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {scheduleDate ? format(scheduleDate, 'dd/MM/yyyy') : 'Pick a date'}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="single"
+            selected={scheduleDate}
+            onSelect={onScheduleDateChange}
+            initialFocus
+            className={cn("p-3 pointer-events-auto")}
+          />
+        </PopoverContent>
+      </Popover>
       <button
         className="action-btn load-btn"
         onClick={() => fileRef.current?.click()}

@@ -28,7 +28,7 @@ const Index: React.FC = () => {
   const isDemo = new URLSearchParams(window.location.search).has('demo');
 
   const [tracks, setTracks] = useState<Track[]>([]);
-  const [filter, setFilter] = useState('all');
+  const [scheduleDate, setScheduleDate] = useState<Date | undefined>(undefined);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoRes, setVideoRes] = useState<{ w: number; h: number; label: string } | null>(null);
@@ -345,8 +345,8 @@ const Index: React.FC = () => {
       const rendered = await offlineCtx.startRendering();
       const wavData = createWAVFile(rendered);
       const wavBlob = new Blob([wavData], { type: 'audio/wav' });
-      const now = new Date();
-      const today = `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}`;
+      const dateForName = scheduleDate ?? new Date();
+      const today = `${String(dateForName.getDate()).padStart(2, '0')}-${String(dateForName.getMonth() + 1).padStart(2, '0')}-${dateForName.getFullYear()}`;
 
       // Build chapters
       let chapterTime = 0;
@@ -473,8 +473,8 @@ const Index: React.FC = () => {
       const mp4Blob = new Blob([bytes], { type: 'video/mp4' });
       ffmpeg.terminate();
 
-      const now2 = new Date();
-      const today = `${String(now2.getDate()).padStart(2, '0')}-${String(now2.getMonth() + 1).padStart(2, '0')}-${now2.getFullYear()}`;
+      const dateForName2 = scheduleDate ?? new Date();
+      const today = `${String(dateForName2.getDate()).padStart(2, '0')}-${String(dateForName2.getMonth() + 1).padStart(2, '0')}-${dateForName2.getFullYear()}`;
       const filename = `poolside-episode-${today}.mp4`;
 
       // Upload to Cloud Storage for reliable download
@@ -555,8 +555,8 @@ const Index: React.FC = () => {
           onChangeVideo={handleChangeVideo}
         />
         <FilterBar
-          filter={filter}
-          onFilterChange={setFilter}
+          scheduleDate={scheduleDate}
+          onScheduleDateChange={setScheduleDate}
           onLoadTracks={handleLoadTracks}
           onClearAll={handleClearAll}
           hasTracks={tracks.length > 0}
@@ -568,7 +568,7 @@ const Index: React.FC = () => {
         <TrackList
           tracks={sorted}
           allTracks={sorted}
-          filter={filter}
+          
           playingId={playingId}
           scrubPercents={scrubPercents}
           onPlay={handlePlay}
