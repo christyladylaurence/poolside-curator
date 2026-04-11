@@ -345,7 +345,8 @@ const Index: React.FC = () => {
       const rendered = await offlineCtx.startRendering();
       const wavData = createWAVFile(rendered);
       const wavBlob = new Blob([wavData], { type: 'audio/wav' });
-      const today = new Date().toISOString().slice(0, 10);
+      const now = new Date();
+      const today = `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}`;
 
       // Build chapters
       let chapterTime = 0;
