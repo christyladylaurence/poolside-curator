@@ -29,6 +29,7 @@ const Index: React.FC = () => {
 
   const [tracks, setTracks] = useState<Track[]>([]);
   const [scheduleDate, setScheduleDate] = useState<Date | undefined>(undefined);
+  const [leadInstrument, setLeadInstrument] = useState('');
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoRes, setVideoRes] = useState<{ w: number; h: number; label: string } | null>(null);
@@ -375,14 +376,14 @@ const Index: React.FC = () => {
         chapters: chapters.join('\n'),
         srtText: srtEntries.join('\n'),
         wavBlob,
-        wavFilename: `poolside-episode-${today}.wav`,
+        wavFilename: `poolside-episode-${today}${leadInstrument.trim() ? '-' + leadInstrument.trim().toLowerCase().replace(/\s+/g, '-') : ''}.wav`,
         hasVideo: !!videoFile,
         videoLabel: videoRes ? `${videoRes.label} (${videoRes.w}×${videoRes.h})` : 'unknown res',
       });
     } catch (err: any) {
       setCpanel({ open: true, title: 'Build failed', phase: 'error', errorMsg: err.message });
     }
-  }, [tracks, crossfadeDuration, videoFile, videoRes]);
+  }, [tracks, crossfadeDuration, videoFile, videoRes, leadInstrument]);
 
   // Download helpers
   const downloadBlob = (blob: Blob, filename: string) => {
@@ -408,7 +409,8 @@ const Index: React.FC = () => {
     if (cpanel.srtText) {
       const blob = new Blob([cpanel.srtText], { type: 'text/srt' });
       const today = new Date().toISOString().slice(0, 10);
-      downloadBlob(blob, `poolside-episode-${today}.srt`);
+      const instrSuffix = leadInstrument.trim() ? '-' + leadInstrument.trim().toLowerCase().replace(/\s+/g, '-') : '';
+      downloadBlob(blob, `poolside-episode-${today}${instrSuffix}.srt`);
     }
   }, [cpanel.srtText]);
 
@@ -475,7 +477,8 @@ const Index: React.FC = () => {
 
       const dateForName2 = scheduleDate ?? new Date();
       const today = `${String(dateForName2.getDate()).padStart(2, '0')}-${String(dateForName2.getMonth() + 1).padStart(2, '0')}-${dateForName2.getFullYear()}`;
-      const filename = `poolside-episode-${today}.mp4`;
+      const instrSuffix2 = leadInstrument.trim() ? '-' + leadInstrument.trim().toLowerCase().replace(/\s+/g, '-') : '';
+      const filename = `poolside-episode-${today}${instrSuffix2}.mp4`;
 
       // Upload to Cloud Storage for reliable download
       setCpanel(prev => ({ ...prev, mp4Status: 'Uploading to cloud…', mp4ProgPct: 97 }));
@@ -557,6 +560,8 @@ const Index: React.FC = () => {
         <FilterBar
           scheduleDate={scheduleDate}
           onScheduleDateChange={setScheduleDate}
+          leadInstrument={leadInstrument}
+          onLeadInstrumentChange={setLeadInstrument}
           onLoadTracks={handleLoadTracks}
           onClearAll={handleClearAll}
           hasTracks={tracks.length > 0}
