@@ -463,7 +463,7 @@ const Index: React.FC = () => {
       await ffmpeg.exec([
         '-stream_loop', '-1', '-i', `input.${vExt}`,
         '-i', 'audio.wav', '-c:v', 'copy', '-c:a', 'aac',
-        '-b:a', '192k', '-shortest', '-movflags', '+faststart', 'output.mp4',
+        '-b:a', '320k', '-shortest', '-movflags', '+faststart', 'output.mp4',
       ]);
 
       setCpanel(prev => ({ ...prev, mp4Status: 'Reading output…', mp4ProgPct: 96 }));
