@@ -448,11 +448,23 @@ const Index: React.FC = () => {
       setCpanel(prev => ({ ...prev, mp4Status: 'Downloading FFmpeg core…', mp4ProgPct: 8 }));
 
       // Load the single-threaded core (no SharedArrayBuffer required)
-      const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
-      await ffmpeg.load({
-        coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-        wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-      });
+      const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
+      const loadFFmpeg = async (attempt = 1): Promise<void> => {
+        try {
+          await ffmpeg.load({
+            coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+            wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+          });
+        } catch (err) {
+          if (attempt < 2) {
+            console.warn('[FFmpeg] Load attempt', attempt, 'failed, retrying…', err);
+            setCpanel(prev => ({ ...prev, mp4Status: 'Retrying FFmpeg download…' }));
+            return loadFFmpeg(attempt + 1);
+          }
+          throw new Error('Failed to load FFmpeg core. Please check your internet connection and try again.');
+        }
+      };
+      await loadFFmpeg();
 
       setCpanel(prev => ({ ...prev, mp4Status: 'Preparing video file…', mp4ProgPct: 18 }));
       const vExt = videoFile.name.toLowerCase().endsWith('.mov') ? 'mov' : 'mp4';
