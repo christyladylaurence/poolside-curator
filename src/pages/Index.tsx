@@ -384,7 +384,7 @@ const Index: React.FC = () => {
         videoLabel: videoRes ? `${videoRes.label} (${videoRes.w}×${videoRes.h})` : 'unknown res',
       });
     } catch (err: any) {
-      setCpanel({ open: true, title: 'Build failed', phase: 'error', errorMsg: err.message });
+      setCpanel({ open: true, title: 'Build failed', phase: 'error', scheduleDate: dateLbl, leadInstrument: leadInstrument.trim() || undefined, errorMsg: err.message });
     }
   }, [tracks, crossfadeDuration, videoFile, videoRes, leadInstrument]);
 
