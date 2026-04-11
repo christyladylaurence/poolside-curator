@@ -27,6 +27,7 @@ export interface CommandPanelState {
 
 interface CommandPanelProps {
   state: CommandPanelState;
+  videoUrl?: string | null;
   onClose: () => void;
   onDownloadWav: () => void;
   onCopyChapters: () => void;
@@ -36,12 +37,30 @@ interface CommandPanelProps {
 }
 
 const CommandPanel: React.FC<CommandPanelProps> = ({
-  state, onClose, onDownloadWav, onCopyChapters, onDownloadSrt, onBuildMp4, onDownloadMp4,
+  state, videoUrl, onClose, onDownloadWav, onCopyChapters, onDownloadSrt, onBuildMp4, onDownloadMp4,
 }) => {
   if (!state.open) return null;
 
   return (
     <div className={`cpanel ${state.open ? 'on' : ''}`}>
+      {videoUrl && (
+        <video
+          src={videoUrl}
+          autoPlay
+          muted
+          loop
+          playsInline
+          style={{
+            position: 'fixed',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            zIndex: -1,
+            opacity: 0.35,
+          }}
+        />
+      )}
       <div className="cbox">
         <div className="chead">
           <div className="ctitle">{state.title}</div>
