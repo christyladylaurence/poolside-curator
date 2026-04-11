@@ -413,33 +413,25 @@ const Index: React.FC = () => {
   const handleBuildMp4 = useCallback(async () => {
     if (!cpanel.wavBlob || !videoFile) return;
 
-    // Check for SharedArrayBuffer support (required by FFmpeg WASM)
-    if (typeof SharedArrayBuffer === 'undefined') {
-      setCpanel(prev => ({
-        ...prev,
-        mp4Building: false,
-        mp4Status: '⚠️ Your browser blocked MP4 building (SharedArrayBuffer not available). Try opening this page directly in a new tab, or use Chrome/Edge. You can still download the WAV and mux it with your video in any video editor.',
-      }));
-      return;
-    }
-
-    setCpanel(prev => ({ ...prev, mp4Building: true, mp4Status: 'Loading FFmpeg (first time may take ~30s)...', mp4ProgPct: 5 }));
+    setCpanel(prev => ({
+      ...prev,
+      mp4Building: true,
+      mp4Status: 'Initializing FFmpeg…',
+      mp4ProgPct: 2,
+    }));
 
     try {
-      const [ffmpegMod, utilMod] = await Promise.all([
-        import('https://esm.sh/@ffmpeg/ffmpeg@0.12.10' as any),
-        import('https://esm.sh/@ffmpeg/util@0.12.1' as any),
-      ]);
+      // Use installed packages instead of CDN imports
+      const { FFmpeg } = await import('@ffmpeg/ffmpeg');
+      const { fetchFile, toBlobURL } = await import('@ffmpeg/util');
 
-      const { FFmpeg } = ffmpegMod;
-      const { fetchFile, toBlobURL } = utilMod;
       const ffmpeg = new FFmpeg();
 
       ffmpeg.on('progress', ({ progress }: { progress: number }) => {
         if (progress > 0) {
           setCpanel(prev => ({
             ...prev,
-            mp4Status: `Muxing video + audio... ${Math.round(progress * 100)}%`,
+            mp4Status: `Muxing video + audio… ${Math.round(progress * 100)}%`,
             mp4ProgPct: Math.min(95, 30 + progress * 65),
           }));
         }
@@ -449,28 +441,33 @@ const Index: React.FC = () => {
         console.log('[FFmpeg]', message);
       });
 
-      setCpanel(prev => ({ ...prev, mp4Status: 'Downloading FFmpeg core...', mp4ProgPct: 10 }));
+      setCpanel(prev => ({ ...prev, mp4Status: 'Downloading FFmpeg core…', mp4ProgPct: 8 }));
+
+      // Load the single-threaded core (no SharedArrayBuffer required)
       const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
       await ffmpeg.load({
         coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
         wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
       });
 
-      setCpanel(prev => ({ ...prev, mp4Status: 'Writing files to FFmpeg...', mp4ProgPct: 20 }));
+      setCpanel(prev => ({ ...prev, mp4Status: 'Preparing video file…', mp4ProgPct: 18 }));
       const vExt = videoFile.name.toLowerCase().endsWith('.mov') ? 'mov' : 'mp4';
       await ffmpeg.writeFile(`input.${vExt}`, await fetchFile(videoFile));
+
+      setCpanel(prev => ({ ...prev, mp4Status: 'Preparing audio…', mp4ProgPct: 24 }));
       const wavArray = new Uint8Array(await cpanel.wavBlob!.arrayBuffer());
       await ffmpeg.writeFile('audio.wav', wavArray);
 
-      setCpanel(prev => ({ ...prev, mp4Status: 'Muxing video + audio...', mp4ProgPct: 30 }));
+      setCpanel(prev => ({ ...prev, mp4Status: 'Muxing video + audio… 0%', mp4ProgPct: 30 }));
       await ffmpeg.exec([
         '-stream_loop', '-1', '-i', `input.${vExt}`,
         '-i', 'audio.wav', '-c:v', 'copy', '-c:a', 'aac',
         '-b:a', '192k', '-shortest', '-movflags', '+faststart', 'output.mp4',
       ]);
 
+      setCpanel(prev => ({ ...prev, mp4Status: 'Reading output…', mp4ProgPct: 96 }));
       const data = await ffmpeg.readFile('output.mp4');
-      const mp4Blob = new Blob([data.buffer], { type: 'video/mp4' });
+      const mp4Blob = new Blob([(data as Uint8Array).buffer], { type: 'video/mp4' });
       ffmpeg.terminate();
 
       const today = new Date().toISOString().slice(0, 10);
@@ -479,15 +476,16 @@ const Index: React.FC = () => {
         mp4Building: false,
         mp4Blob,
         mp4Filename: `poolside-episode-${today}.mp4`,
-        mp4Status: '✅ MP4 ready. Straight to YouTube.',
+        mp4Status: '✅ MP4 ready — click Download below.',
         mp4ProgPct: 100,
       }));
     } catch (err: any) {
       console.error('MP4 build error:', err);
+      const msg = err?.message || String(err) || 'Unknown error';
       setCpanel(prev => ({
         ...prev,
         mp4Building: false,
-        mp4Status: `❌ MP4 build failed: ${err?.message || 'Unknown error'}. You can still download the WAV above and combine it with your video in any editor.`,
+        mp4Status: `❌ MP4 build failed: ${msg}. You can still download the WAV and combine it with your video in any editor.`,
         mp4ProgPct: undefined,
       }));
     }
