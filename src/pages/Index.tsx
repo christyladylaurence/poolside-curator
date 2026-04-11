@@ -606,6 +606,8 @@ const Index: React.FC = () => {
           onScheduleDateChange={setScheduleDate}
           leadInstrument={leadInstrument}
           onLeadInstrumentChange={setLeadInstrument}
+          episodeNumber={episodeNumber}
+          onEpisodeNumberChange={(n) => { setEpisodeNumber(n); localStorage.setItem('poolside-episodeNumber', String(n)); }}
           onLoadTracks={handleLoadTracks}
           onClearAll={handleClearAll}
           hasTracks={tracks.length > 0}
