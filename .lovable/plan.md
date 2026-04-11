@@ -1,27 +1,15 @@
 
 
-## Energy Rating Button — Right Side
+## Plan: Switch filename date format to Australian (DD-MM-YYYY)
 
-Add a clickable energy/vibe indicator on the right side of each track row, next to the existing ✓ and ✂ buttons. Clicking cycles through 3 levels plus off, using a Lucide `Music` icon at increasing sizes to show how upbeat/strong a track is.
+### Change
+In `src/pages/Index.tsx`, update all filename date formatting from `yyyy-MM-dd` to `dd-MM-yyyy`.
 
-### Behavior
-- Click cycles: **off → small 🎵 → medium 🎵 → large 🎵 → off**
-- Three sizes: 14px, 18px, 24px
-- Color intensifies: dim → amber → bright gold
-- When off, shows a small faded icon as clickable target
+**Example**: `poolside-episode-15-04-2026.mp4` instead of `poolside-episode-2026-04-15.mp4`
 
-### Button order (left to right)
-`[track box] [✓ check] [🎵 energy] [✂ cutoff]`
+### File: `src/pages/Index.tsx`
+- Find every `format(scheduleDate, 'yyyy-MM-dd')` and `format(new Date(), 'yyyy-MM-dd')` call used for filenames
+- Change the format string to `'dd-MM-yyyy'`
 
-### File changes
-
-1. **`src/lib/audio-utils.ts`** — Add `energy?: 0 | 1 | 2 | 3` to `Track` interface
-
-2. **`src/components/TrackItem.tsx`** — Add `onCycleEnergy` prop. Render `.energy-side-btn` between the check and cutoff buttons. Import `Music` from `lucide-react` and render it at the appropriate size based on `track.energy`.
-
-3. **`src/index.css`** — Style `.energy-side-btn` matching the existing side button pattern, with amber/gold color states for each energy level.
-
-4. **`src/pages/Index.tsx`** — Add `handleCycleEnergy` callback: `energy = ((track.energy || 0) + 1) % 4`
-
-5. **`src/components/TrackList.tsx`** — Pass the new callback through to TrackItem.
+One file, one pattern change.
 
