@@ -81,10 +81,11 @@ const CommandPanel: React.FC<CommandPanelProps> = ({
         />
       )}
       <div className="cbox">
-        <div className="chead">
-          <div className="ctitle">{state.title}</div>
-          <button className="closex" onClick={onClose}>✕</button>
-        </div>
+          <div className="chead">
+            <button className="closex" onClick={onClose} style={{ marginRight: 12 }}>←</button>
+            <div className="ctitle" style={{ flex: 1 }}>{state.title}</div>
+            <button className="closex" onClick={onClose}>✕</button>
+          </div>
         <div className="cbody">
           {(state.scheduleDate || state.leadInstrument || state.episodeNumber) && (
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12, fontSize: 13, color: '#aaa', fontWeight: 500 }}>
