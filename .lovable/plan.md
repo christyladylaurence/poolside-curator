@@ -1,51 +1,25 @@
 
 
-## YouTube Optimization Features — Expert Recommendations
+## Fix: "Failed to import ffmpeg-core.js" error
 
-Here's what the product currently does well: episode building with crossfades, YouTube chapters, SRT subtitles, SEO-enhanced track names, and MP4 export. Below are high-impact features that would take it further.
+**Root cause**: The `@ffmpeg/ffmpeg` v0.12.x library requires `SharedArrayBuffer` to work, which in turn requires specific CORS headers (`Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`) on the page. The Lovable preview server doesn't set these headers, so the FFmpeg WASM module fails to initialize.
 
----
+Additionally, the bundled `public/wasm/ffmpeg-core.js` file (21 lines) appears to be a stub/placeholder rather than the full ~30MB core file from `@ffmpeg/core@0.12.6`.
 
-### 1. Auto-generate YouTube description (high impact)
-Currently you get chapters and SRT, but no full description. A complete YouTube description should include:
-- A hook line (e.g. "1 hour of deep house for focus & relaxation")
-- The chapter timestamps (already generated)
-- Track credits with artist/track links
-- Hashtags based on genre (#DeepHouse #ChillMix #LofiBeats)
-- A call-to-action ("Subscribe for weekly mixes")
-- Social links placeholder
+**Fix approach**:
 
-**Changes**: Add a "Copy Description" button to CommandPanel that assembles all of this from the existing track data, genre, schedule date, and lead instrument.
+1. **Add required CORS headers in `vite.config.ts`**
+   - Add `headers` config to the dev server: `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`
+   - This enables `SharedArrayBuffer` which FFmpeg WASM requires
 
-### 2. Auto-generate YouTube title with SEO
-Generate a ready-to-paste title like: `Deep House Mix 2026 · Poolside Sunset Vibes · Flute Edition [1 Hour]`
-Using: genre, lead instrument, runtime, and rotating SEO keywords.
+2. **Replace the stub `ffmpeg-core.js` with the real file**
+   - Copy the actual `@ffmpeg/core@0.12.6` files from `node_modules/@ffmpeg/core/dist/esm/` into `public/wasm/`
+   - This includes `ffmpeg-core.js` (~600KB) and `ffmpeg-core.wasm` (~30MB)
 
-**Changes**: Generate title in the build step, display it at the top of CommandPanel with a copy button.
+3. **Add a `worker` URL to `ffmpeg.load()`**
+   - The v0.12.x API also needs a worker URL — add `workerURL` pointing to a local copy of `ffmpeg-core.worker.js`
 
-### 3. YouTube tags generator
-Generate a comma-separated list of tags based on genre, track names, and instrument. YouTube tags are limited to 500 characters — the generator should respect that.
+**Caveat**: The CORS headers may break other resources on the page (e.g., external images, fonts, or CDN scripts) because `require-corp` blocks all cross-origin resources that don't opt in. If that happens, we can switch to `credentialless` instead, or use a `crossOriginIsolated` check and fall back gracefully.
 
-**Changes**: Add tag generation logic and a "Copy Tags" button to CommandPanel.
-
-### 4. Thumbnail text overlay suggestion
-Show a recommended thumbnail text line based on the genre and episode metadata (e.g. "DEEP HOUSE · FLUTE · 1 HOUR"). This helps maintain a consistent thumbnail style.
-
-**Changes**: Small text display in CommandPanel with copy button.
-
-### 5. Episode numbering / series tracking
-For channels posting regularly, auto-increment episode numbers (persisted in localStorage). This helps with titles like "Poolside Sessions #47" and builds series recognition.
-
-**Changes**: Add an `episodeNumber` counter in localStorage, display in FilterBar, include in generated titles/descriptions.
-
----
-
-### Implementation priority
-
-I'd suggest doing **#1 (description), #2 (title), and #3 (tags)** together — they're all text generation added to CommandPanel and would immediately save 10+ minutes per upload. Features #4 and #5 are quick additions that round out the workflow.
-
-### Technical approach
-- All logic lives in a new utility function `generateYouTubeMetadata()` in `audio-utils.ts`
-- CommandPanel gets three new copy buttons in the "ready" phase
-- No database changes needed — everything is derived from existing state
+**Result**: The "Build MP4" button will work without any external CDN dependency.
 
