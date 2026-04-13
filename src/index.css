@@ -890,8 +890,15 @@
 .enhance-btn.enhanced:hover {
   background: rgba(106,184,124,0.18);
 }
+.enhance-btn.chill {
+  border-color: #b48ad6;
+  color: #b48ad6;
+  background: rgba(180,138,214,0.08);
+}
+.enhance-btn.chill:hover {
+  background: rgba(180,138,214,0.18);
+}
 
-/* Command panel */
 .cpanel {
   position: fixed;
   inset: 0;
