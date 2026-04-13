@@ -511,18 +511,9 @@ const Index: React.FC = () => {
 
       setCpanel(prev => ({ ...prev, mp4Status: 'Loading FFmpeg core…', mp4ProgPct: 8 }));
 
-      // Load from bundled local files — works in both browser and Electron (file://)
-      let coreURL: string;
-      let wasmURL: string;
-      if (window.location.protocol === 'file:') {
-        // Electron: build path relative to the HTML file
-        const dir = window.location.href.substring(0, window.location.href.lastIndexOf('/'));
-        coreURL = `${dir}/wasm/ffmpeg-core.js`;
-        wasmURL = `${dir}/wasm/ffmpeg-core.wasm`;
-      } else {
-        coreURL = `${window.location.origin}/wasm/ffmpeg-core.js`;
-        wasmURL = `${window.location.origin}/wasm/ffmpeg-core.wasm`;
-      }
+      // Load from bundled local files — always served over HTTP (including Electron)
+      const coreURL = `${window.location.origin}/wasm/ffmpeg-core.js`;
+      const wasmURL = `${window.location.origin}/wasm/ffmpeg-core.wasm`;
       await ffmpeg.load({ coreURL, wasmURL });
 
       setCpanel(prev => ({ ...prev, mp4Status: 'Preparing video file…', mp4ProgPct: 18 }));
