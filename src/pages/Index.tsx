@@ -11,7 +11,7 @@ import { saveVideo, loadVideo, clearVideo, saveTracks, loadTracks, clearTracks }
 import {
   Track, Genre, cleanName, cleanNameForYouTube, detectGenre, dateOf,
   fmt, fmtSRT, getResLabel, sortTracksByPrefix, getRotatingSuffix, createWAVFile,
-  generateYouTubeMetadata,
+  generateYouTubeMetadata, EnhanceMode,
 } from '@/lib/audio-utils';
 
 const DEMO_TRACKS: Omit<Track, 'url' | 'file'>[] = [
