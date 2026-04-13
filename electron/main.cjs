@@ -37,8 +37,21 @@ function startLocalServer() {
 
       fs.readFile(filePath, (err, data) => {
         if (err) {
-          res.writeHead(404);
-          res.end('Not found');
+          // SPA fallback: serve index.html for any non-file route
+          const indexPath = path.join(distDir, 'index.html');
+          fs.readFile(indexPath, (err2, indexData) => {
+            if (err2) {
+              res.writeHead(404);
+              res.end('Not found');
+              return;
+            }
+            res.writeHead(200, {
+              'Content-Type': 'text/html',
+              'Cross-Origin-Opener-Policy': 'same-origin',
+              'Cross-Origin-Embedder-Policy': 'require-corp',
+            });
+            res.end(indexData);
+          });
           return;
         }
         res.writeHead(200, {
