@@ -94,9 +94,9 @@ export const seoSuffixes: Record<Genre, string[]> = {
 };
 
 export const chillSeoSuffixes: Record<Genre, string[]> = {
-  dh: ['Melodic Focus Flow', 'Calm Poolside Drift', 'Gentle Waves Mix', 'Warm Evening Glow', 'Soft Horizon Blend', 'Tranquil Groove Set'],
-  lf: ['Dreamy Focus Session', 'Gentle Rain Beats', 'Calm Morning Tape', 'Soft Cloud Drifts', 'Quiet Night Blend', 'Tender Breeze Mix'],
-  hy: ['Serene Soundscape', 'Floating Melody Mix', 'Peaceful Currents', 'Still Water Vibes', 'Gentle Pulse Set', 'Quiet Warmth Blend'],
+  dh: ['Melodic Deep House Focus', 'Deep House Calm Grooves', 'Deep House Poolside Drift', 'Melodic House Sunset Flow', 'Deep House Warm Currents', 'Soulful Deep House Blend'],
+  lf: ['Lofi Deep Focus Flow', 'Lofi Calm Study Grooves', 'Lofi Mellow Drift', 'Lofi Gentle Wavelengths', 'Lofi Warm Tape Session', 'Lofi Soothing Blend'],
+  hy: ['Melodic Chill House', 'Deep Ambient Grooves', 'Downtempo Deep Flow', 'Chill House Focus Mix', 'Melodic Sunset Drift', 'Deep Warmth Session'],
 };
 
 export type EnhanceMode = 'off' | 'standard' | 'chill';
