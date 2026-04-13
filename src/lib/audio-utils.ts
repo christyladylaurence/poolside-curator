@@ -93,8 +93,18 @@ export const seoSuffixes: Record<Genre, string[]> = {
   hy: ['Chillout Mix', 'Ambient House', 'Electronic Chill', 'Downtempo Vibes', 'Chill Electronic', 'Sunset Beats'],
 };
 
-export function getRotatingSuffix(genre: Genre, index: number): string {
-  const pool = seoSuffixes[genre] || seoSuffixes.dh;
+export const chillSeoSuffixes: Record<Genre, string[]> = {
+  dh: ['Melodic Focus Flow', 'Calm Poolside Drift', 'Gentle Waves Mix', 'Warm Evening Glow', 'Soft Horizon Blend', 'Tranquil Groove Set'],
+  lf: ['Dreamy Focus Session', 'Gentle Rain Beats', 'Calm Morning Tape', 'Soft Cloud Drifts', 'Quiet Night Blend', 'Tender Breeze Mix'],
+  hy: ['Serene Soundscape', 'Floating Melody Mix', 'Peaceful Currents', 'Still Water Vibes', 'Gentle Pulse Set', 'Quiet Warmth Blend'],
+};
+
+export type EnhanceMode = 'off' | 'standard' | 'chill';
+
+export function getRotatingSuffix(genre: Genre, index: number, mode: EnhanceMode = 'standard'): string {
+  const pool = mode === 'chill'
+    ? (chillSeoSuffixes[genre] || chillSeoSuffixes.dh)
+    : (seoSuffixes[genre] || seoSuffixes.dh);
   return pool[index % pool.length];
 }
 
