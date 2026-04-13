@@ -8,6 +8,7 @@ import TrackList from '@/components/TrackList';
 import FooterBar from '@/components/FooterBar';
 import CommandPanel, { CommandPanelState } from '@/components/CommandPanel';
 import { saveVideo, loadVideo, clearVideo, saveTracks, loadTracks, clearTracks } from '@/lib/video-store';
+import { writeBlobToTempWav } from '@/lib/electron-export';
 import {
   Track, Genre, cleanName, cleanNameForYouTube, detectGenre, dateOf,
   fmt, fmtSRT, getResLabel, sortTracksByPrefix, getRotatingSuffix, createWAVFile,
@@ -487,8 +488,8 @@ const Index: React.FC = () => {
     const defaultFilename = `poolside-episode-${today}${instrSuffix2}.mp4`;
 
     // ── Electron native path ──────────────────────────────────
-    if ((window as any).electronAPI) {
-      const api = (window as any).electronAPI;
+    if (window.electronAPI) {
+      const api = window.electronAPI;
 
       setCpanel(prev => ({
         ...prev,
@@ -511,10 +512,15 @@ const Index: React.FC = () => {
           throw new Error('Cannot access video file path. Please re-drop the video file.');
         }
 
-        // 3. Write WAV to temp file (streamed in chunks)
-        setCpanel(prev => ({ ...prev, mp4Status: 'Writing audio to disk…', mp4ProgPct: 8 }));
-        const wavArrayBuffer = await cpanel.wavBlob!.arrayBuffer();
-        const audioPath = await api.writeTempWav(wavArrayBuffer);
+        // 3. Write WAV to temp file without duplicating the full buffer in memory
+        setCpanel(prev => ({ ...prev, mp4Status: 'Writing audio to disk… 0%', mp4ProgPct: 8 }));
+        const audioPath = await writeBlobToTempWav(api, cpanel.wavBlob!, (percent) => {
+          setCpanel(prev => ({
+            ...prev,
+            mp4Status: `Writing audio to disk… ${percent}%`,
+            mp4ProgPct: 8 + Math.round(percent * 0.02),
+          }));
+        });
 
         // 4. Listen for progress updates
         const cleanupProgress = api.onMuxProgress(({ percent, timeStr }: { percent: number; timeStr: string }) => {
