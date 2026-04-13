@@ -82,7 +82,7 @@ function createWindow() {
     },
   });
 
-  win.loadURL(`http://127.0.0.1:${serverPort}/index.html`);
+  win.loadURL(`http://127.0.0.1:${serverPort}/`);
   return win;
 }
 
