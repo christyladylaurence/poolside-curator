@@ -4,6 +4,11 @@ const http = require('http');
 const fs = require('fs');
 const os = require('os');
 const { spawn } = require('child_process');
+const {
+  appendTempWavChunk,
+  createTempWavFile,
+  deleteTempWavFile,
+} = require('./temp-file.cjs');
 
 const MIME_TYPES = {
   '.html': 'text/html',
@@ -89,42 +94,16 @@ function createWindow() {
 
 // ── IPC Handlers ──────────────────────────────────────────
 
-/**
- * write-temp-wav: Receives a WAV ArrayBuffer, streams it to a temp file in 64KB chunks.
- * Returns the temp file path.
- */
-ipcMain.handle('write-temp-wav', async (_event, arrayBuffer) => {
-  const tempPath = path.join(os.tmpdir(), `poolside-audio-${Date.now()}.wav`);
-  const buffer = Buffer.from(arrayBuffer);
-  const CHUNK = 64 * 1024;
+ipcMain.handle('create-temp-wav-file', async () => createTempWavFile());
 
-  return new Promise((resolve, reject) => {
-    const ws = fs.createWriteStream(tempPath);
-    let offset = 0;
+ipcMain.handle('append-temp-wav-chunk', async (_event, { filePath, chunk }) => {
+  await appendTempWavChunk(filePath, chunk);
+  return { success: true };
+});
 
-    function writeNext() {
-      let ok = true;
-      while (offset < buffer.length && ok) {
-        const end = Math.min(offset + CHUNK, buffer.length);
-        const chunk = buffer.slice(offset, end);
-        offset = end;
-        if (offset >= buffer.length) {
-          ws.write(chunk, () => {
-            ws.end();
-          });
-        } else {
-          ok = ws.write(chunk);
-        }
-      }
-      if (offset < buffer.length) {
-        ws.once('drain', writeNext);
-      }
-    }
-
-    ws.on('finish', () => resolve(tempPath));
-    ws.on('error', reject);
-    writeNext();
-  });
+ipcMain.handle('delete-temp-wav-file', async (_event, filePath) => {
+  await deleteTempWavFile(filePath);
+  return { success: true };
 });
 
 /**

@@ -2,12 +2,6 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
   /**
-   * Write a WAV ArrayBuffer to a temp file in chunks.
-   * Returns the temp file path.
-   */
-  writeTempWav: (arrayBuffer) => ipcRenderer.invoke('write-temp-wav', arrayBuffer),
-
-  /**
    * Mux video + audio into MP4 using native ffmpeg.
    * All args are file paths on disk.
    * Returns { success: true } or { success: false, error: string }.
@@ -32,10 +26,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
   showSaveDialog: (defaultName) => ipcRenderer.invoke('show-save-dialog', defaultName),
 
   /**
-   * Get the real filesystem path of a dropped File object.
-   * In Electron, File objects from drag-and-drop have a .path property,
-   * but it's not accessible from the renderer with contextIsolation.
-   * Instead, we pass it through from the renderer directly since
-   * Electron's File.path IS available in the renderer even with contextIsolation.
+   * Create an empty temp WAV file and return its path.
    */
+  createTempWavFile: () => ipcRenderer.invoke('create-temp-wav-file'),
+
+  /**
+   * Append a WAV chunk to a temp file without loading the full blob into memory.
+   */
+  appendTempWavChunk: ({ filePath, chunk }) =>
+    ipcRenderer.invoke('append-temp-wav-chunk', { filePath, chunk }),
+
+  /**
+   * Delete a temp WAV file if export is cancelled or fails.
+   */
+  deleteTempWavFile: (filePath) => ipcRenderer.invoke('delete-temp-wav-file', filePath),
 });
