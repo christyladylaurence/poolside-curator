@@ -1,19 +1,25 @@
 import React from 'react';
-import { computeRuntime, Track } from '@/lib/audio-utils';
+import { computeRuntime, Track, EnhanceMode } from '@/lib/audio-utils';
 
 interface FooterBarProps {
   tracks: Track[];
   crossfadeDuration: number;
   onCrossfadeChange: (val: number) => void;
   nowPlaying: string | null;
-  isEnhanced: boolean;
+  enhanceMode: EnhanceMode;
   onEnhance: () => void;
   onBuild: () => void;
 }
 
+const enhanceLabels: Record<EnhanceMode, string> = {
+  off: 'Enhance for YouTube',
+  standard: '🔄 Switch to Chill Mode',
+  chill: 'Undo enhance',
+};
+
 const FooterBar: React.FC<FooterBarProps> = ({
   tracks, crossfadeDuration, onCrossfadeChange,
-  nowPlaying, isEnhanced, onEnhance, onBuild,
+  nowPlaying, enhanceMode, onEnhance, onBuild,
 }) => {
   const runtime = computeRuntime(tracks, crossfadeDuration);
 
@@ -51,11 +57,11 @@ const FooterBar: React.FC<FooterBarProps> = ({
         </div>
       </div>
       <button
-        className={`enhance-btn ${isEnhanced ? 'enhanced' : ''}`}
+        className={`enhance-btn ${enhanceMode !== 'off' ? 'enhanced' : ''} ${enhanceMode === 'chill' ? 'chill' : ''}`}
         disabled={!tracks.length}
         onClick={onEnhance}
       >
-        {isEnhanced ? 'Undo enhance' : 'Enhance for YouTube'}
+        {enhanceLabels[enhanceMode]}
       </button>
       <button
         className="build-btn"
