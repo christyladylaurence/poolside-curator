@@ -481,6 +481,92 @@ const Index: React.FC = () => {
   const handleBuildMp4 = useCallback(async () => {
     if (!cpanel.wavBlob || !videoFile) return;
 
+    const dateForName2 = scheduleDate ?? new Date();
+    const today = `${String(dateForName2.getDate()).padStart(2, '0')}-${String(dateForName2.getMonth() + 1).padStart(2, '0')}-${dateForName2.getFullYear()}`;
+    const instrSuffix2 = leadInstrument.trim() ? '-' + leadInstrument.trim().toLowerCase().replace(/\s+/g, '-') : '';
+    const defaultFilename = `poolside-episode-${today}${instrSuffix2}.mp4`;
+
+    // ── Electron native path ──────────────────────────────────
+    if ((window as any).electronAPI) {
+      const api = (window as any).electronAPI;
+
+      setCpanel(prev => ({
+        ...prev,
+        mp4Building: true,
+        mp4Status: 'Choose where to save…',
+        mp4ProgPct: 2,
+      }));
+
+      try {
+        // 1. Show native save dialog
+        const outputPath = await api.showSaveDialog(defaultFilename);
+        if (!outputPath) {
+          setCpanel(prev => ({ ...prev, mp4Building: false, mp4Status: undefined, mp4ProgPct: undefined }));
+          return;
+        }
+
+        // 2. Get video file path (Electron File objects have .path)
+        const videoPath = (videoFile as any).path;
+        if (!videoPath) {
+          throw new Error('Cannot access video file path. Please re-drop the video file.');
+        }
+
+        // 3. Write WAV to temp file (streamed in chunks)
+        setCpanel(prev => ({ ...prev, mp4Status: 'Writing audio to disk…', mp4ProgPct: 8 }));
+        const wavArrayBuffer = await cpanel.wavBlob!.arrayBuffer();
+        const audioPath = await api.writeTempWav(wavArrayBuffer);
+
+        // 4. Listen for progress updates
+        const cleanupProgress = api.onMuxProgress(({ percent, timeStr }: { percent: number; timeStr: string }) => {
+          setCpanel(prev => ({
+            ...prev,
+            mp4Status: `Muxing video + audio… ${percent}% (${timeStr})`,
+            mp4ProgPct: Math.min(98, 10 + percent * 0.88),
+          }));
+        });
+
+        // 5. Mux with native ffmpeg
+        setCpanel(prev => ({ ...prev, mp4Status: 'Muxing video + audio… 0%', mp4ProgPct: 10 }));
+        const result = await api.muxVideo({ videoPath, audioPath, outputPath });
+        cleanupProgress();
+
+        if (result.success) {
+          setCpanel(prev => ({
+            ...prev,
+            mp4Building: false,
+            mp4Status: `✅ MP4 saved to: ${outputPath}`,
+            mp4ProgPct: 100,
+            mp4Filename: defaultFilename,
+          }));
+        } else {
+          throw new Error(result.error || 'ffmpeg failed');
+        }
+      } catch (err: any) {
+        console.error('Native MP4 build error:', err);
+        const msg = err?.message || String(err);
+        setCpanel(prev => ({
+          ...prev,
+          mp4Building: false,
+          mp4Status: `❌ MP4 build failed: ${msg}`,
+          mp4ProgPct: undefined,
+        }));
+      }
+      return;
+    }
+
+    // ── Web fallback (ffmpeg.wasm) ────────────────────────────
+    // Warn for long mixes
+    const totalDur = (cpanel.tracks || []).reduce((sum, t, i, arr) => sum + t.dur - (i < arr.length - 1 ? 3 : 0), 0);
+    if (totalDur > 30 * 60) {
+      console.warn('Mix is over 30 minutes — for reliable MP4 builds, use the desktop app.');
+      // Show warning but don't block
+      setCpanel(prev => ({
+        ...prev,
+        mp4Status: '⚠️ Long mix detected — desktop app recommended for reliable builds. Attempting anyway…',
+      }));
+      await new Promise(r => setTimeout(r, 2000));
+    }
+
     setCpanel(prev => ({
       ...prev,
       mp4Building: true,
@@ -489,7 +575,6 @@ const Index: React.FC = () => {
     }));
 
     try {
-      // Use installed packages instead of CDN imports
       const { FFmpeg } = await import('@ffmpeg/ffmpeg');
       const { fetchFile } = await import('@ffmpeg/util');
 
@@ -510,8 +595,6 @@ const Index: React.FC = () => {
       });
 
       setCpanel(prev => ({ ...prev, mp4Status: 'Loading FFmpeg core…', mp4ProgPct: 8 }));
-
-      // Load from bundled local files — always served over HTTP (including Electron)
       const coreURL = `${window.location.origin}/wasm/ffmpeg-core.js`;
       const wasmURL = `${window.location.origin}/wasm/ffmpeg-core.wasm`;
       await ffmpeg.load({ coreURL, wasmURL });
@@ -537,16 +620,11 @@ const Index: React.FC = () => {
       const mp4Blob = new Blob([bytes], { type: 'video/mp4' });
       ffmpeg.terminate();
 
-      const dateForName2 = scheduleDate ?? new Date();
-      const today = `${String(dateForName2.getDate()).padStart(2, '0')}-${String(dateForName2.getMonth() + 1).padStart(2, '0')}-${dateForName2.getFullYear()}`;
-      const instrSuffix2 = leadInstrument.trim() ? '-' + leadInstrument.trim().toLowerCase().replace(/\s+/g, '-') : '';
-      const filename = `poolside-episode-${today}${instrSuffix2}.mp4`;
-
       // Upload to Cloud Storage for reliable download
       setCpanel(prev => ({ ...prev, mp4Status: 'Uploading to cloud…', mp4ProgPct: 97 }));
       let mp4Url: string | undefined;
       try {
-        const storagePath = `${Date.now()}-${filename}`;
+        const storagePath = `${Date.now()}-${defaultFilename}`;
         const { error: uploadErr } = await supabase.storage
           .from('episodes')
           .upload(storagePath, mp4Blob, { contentType: 'video/mp4', upsert: true });
@@ -567,7 +645,7 @@ const Index: React.FC = () => {
         ...prev,
         mp4Building: false,
         mp4Blob,
-        mp4Filename: filename,
+        mp4Filename: defaultFilename,
         mp4Url,
         mp4Status: mp4Url
           ? '✅ MP4 ready — saved to cloud. Click Download below.'
@@ -584,7 +662,7 @@ const Index: React.FC = () => {
         mp4ProgPct: undefined,
       }));
     }
-  }, [cpanel.wavBlob, videoFile]);
+  }, [cpanel.wavBlob, cpanel.tracks, videoFile, scheduleDate, leadInstrument]);
 
   const handleDownloadMp4 = useCallback(() => {
     if (cpanel.mp4Url && cpanel.mp4Filename) {
