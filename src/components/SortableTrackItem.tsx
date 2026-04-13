@@ -16,10 +16,11 @@ const SortableTrackItem: React.FC<SortableTrackItemProps> = (props) => {
   } = useSortable({ id: props.track.id });
 
   const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
+    transform: CSS.Translate.toString(transform),
+    transition: isDragging ? 'none' : transition,
     opacity: isDragging ? 0.3 : 1,
     zIndex: isDragging ? 0 : 'auto',
+    willChange: isDragging ? 'transform' : undefined,
   };
 
   return (

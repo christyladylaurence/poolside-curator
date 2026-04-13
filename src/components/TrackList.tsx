@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback, memo } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -17,6 +17,48 @@ import {
 import SortableTrackItem from './SortableTrackItem';
 import TrackItem from './TrackItem';
 import { Track } from '@/lib/audio-utils';
+
+interface MemoizedSortableTrackProps {
+  track: Track;
+  allTracks: Track[];
+  playingId: string | null;
+  scrubPercent: number;
+  onPlay: (track: Track) => void;
+  onDelete: (id: string) => void;
+  onGenreCycle: (id: string) => void;
+  onRename: (id: string, name: string) => void;
+  onScrub: (track: Track, pct: number) => void;
+  onToggleCutoff: (id: string) => void;
+  onToggleChecked: (id: string) => void;
+  onCycleEnergy: (id: string) => void;
+}
+
+const MemoizedSortableTrack = memo<MemoizedSortableTrackProps>(({
+  track, allTracks, playingId, scrubPercent,
+  onPlay, onDelete, onGenreCycle, onRename, onScrub, onToggleCutoff, onToggleChecked, onCycleEnergy,
+}) => {
+  const actualIdx = allTracks.findIndex(x => x.id === track.id);
+  return (
+    <SortableTrackItem
+      track={track}
+      displayNum={actualIdx + 1}
+      isPlaying={playingId === track.id}
+      scrubPercent={scrubPercent}
+      onPlay={() => onPlay(track)}
+      onDelete={() => onDelete(track.id)}
+      onGenreCycle={() => onGenreCycle(track.id)}
+      onRename={name => onRename(track.id, name)}
+      onScrub={pct => onScrub(track, pct)}
+      onToggleCutoff={() => onToggleCutoff(track.id)}
+      onToggleChecked={() => onToggleChecked(track.id)}
+      onCycleEnergy={() => onCycleEnergy(track.id)}
+    />
+  );
+}, (prev, next) =>
+  prev.track === next.track &&
+  prev.playingId === next.playingId &&
+  prev.scrubPercent === next.scrubPercent
+);
 
 interface TrackListProps {
   tracks: Track[];
@@ -118,26 +160,23 @@ const TrackList: React.FC<TrackListProps> = ({
             onDragEnd={handleDragEnd}
           >
             <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-              {visible.map(t => {
-                const actualIdx = allTracks.findIndex(x => x.id === t.id);
-                return (
-                  <SortableTrackItem
+              {visible.map(t => (
+                  <MemoizedSortableTrack
                     key={t.id}
                     track={t}
-                    displayNum={actualIdx + 1}
-                    isPlaying={playingId === t.id}
+                    allTracks={allTracks}
+                    playingId={playingId}
                     scrubPercent={scrubPercents[t.id] || 0}
-                    onPlay={() => onPlay(t)}
-                    onDelete={() => onDelete(t.id)}
-                    onGenreCycle={() => onGenreCycle(t.id)}
-                    onRename={name => onRename(t.id, name)}
-                    onScrub={pct => onScrub(t, pct)}
-                    onToggleCutoff={() => onToggleCutoff(t.id)}
-                    onToggleChecked={() => onToggleChecked(t.id)}
-                    onCycleEnergy={() => onCycleEnergy(t.id)}
+                    onPlay={onPlay}
+                    onDelete={onDelete}
+                    onGenreCycle={onGenreCycle}
+                    onRename={onRename}
+                    onScrub={onScrub}
+                    onToggleCutoff={onToggleCutoff}
+                    onToggleChecked={onToggleChecked}
+                    onCycleEnergy={onCycleEnergy}
                   />
-                );
-              })}
+              ))}
             </SortableContext>
             <DragOverlay>
               {activeTrack ? (
