@@ -651,7 +651,7 @@ const Index: React.FC = () => {
         crossfadeDuration={crossfadeDuration}
         onCrossfadeChange={setCrossfadeDuration}
         nowPlaying={nowPlaying}
-        isEnhanced={isEnhanced}
+        enhanceMode={enhanceMode}
         onEnhance={handleEnhance}
         onBuild={handleBuild}
       />
