@@ -1,25 +1,23 @@
 
 
-## Fix: "Failed to import ffmpeg-core.js" error
+## Fix: Serve Electron app via local HTTP server instead of `file://`
 
-**Root cause**: The `@ffmpeg/ffmpeg` v0.12.x library requires `SharedArrayBuffer` to work, which in turn requires specific CORS headers (`Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`) on the page. The Lovable preview server doesn't set these headers, so the FFmpeg WASM module fails to initialize.
+Claude's diagnosis is spot-on — this is the same root cause I identified earlier. The `file://` protocol breaks two things FFmpeg needs: dynamic ES module imports and COOP/COEP headers for SharedArrayBuffer. The fix is to serve the app over `http://localhost` from inside Electron.
 
-Additionally, the bundled `public/wasm/ffmpeg-core.js` file (21 lines) appears to be a stub/placeholder rather than the full ~30MB core file from `@ffmpeg/core@0.12.6`.
+### What changes
 
-**Fix approach**:
+**1. `electron/main.cjs`** — Add a tiny local HTTP server using Node's built-in `http` and `fs` modules (no extra dependencies needed):
+- Create a static file server that serves the `dist/` folder
+- Set COOP/COEP headers on every response (replacing the current `onHeadersReceived` hack)
+- Pick a random available port
+- Change `win.loadFile(...)` → `win.loadURL('http://localhost:<port>/index.html')`
+- Remove the `session.defaultSession.webRequest.onHeadersReceived` block (no longer needed)
 
-1. **Add required CORS headers in `vite.config.ts`**
-   - Add `headers` config to the dev server: `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`
-   - This enables `SharedArrayBuffer` which FFmpeg WASM requires
+**2. `src/pages/Index.tsx`** (lines 515-525) — Simplify FFmpeg URL logic:
+- Remove the `file://` special case entirely
+- Always use `window.location.origin` for coreURL and wasmURL since the app will always run over HTTP now
 
-2. **Replace the stub `ffmpeg-core.js` with the real file**
-   - Copy the actual `@ffmpeg/core@0.12.6` files from `node_modules/@ffmpeg/core/dist/esm/` into `public/wasm/`
-   - This includes `ffmpeg-core.js` (~600KB) and `ffmpeg-core.wasm` (~30MB)
+### After approving
 
-3. **Add a `worker` URL to `ffmpeg.load()`**
-   - The v0.12.x API also needs a worker URL — add `workerURL` pointing to a local copy of `ffmpeg-core.worker.js`
-
-**Caveat**: The CORS headers may break other resources on the page (e.g., external images, fonts, or CDN scripts) because `require-corp` blocks all cross-origin resources that don't opt in. If that happens, we can switch to `credentialless` instead, or use a `crossOriginIsolated` check and fall back gracefully.
-
-**Result**: The "Build MP4" button will work without any external CDN dependency.
+You'll need to do one more rebuild on your Mac (same single command as before) to get the fix into your desktop app. This should be the last time for this issue.
 
