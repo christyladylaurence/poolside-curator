@@ -1,5 +1,62 @@
-const { app, BrowserWindow, Menu, session } = require('electron');
+const { app, BrowserWindow, Menu } = require('electron');
 const path = require('path');
+const http = require('http');
+const fs = require('fs');
+
+const MIME_TYPES = {
+  '.html': 'text/html',
+  '.js': 'application/javascript',
+  '.mjs': 'application/javascript',
+  '.css': 'text/css',
+  '.json': 'application/json',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.svg': 'image/svg+xml',
+  '.wasm': 'application/wasm',
+  '.ico': 'image/x-icon',
+  '.wav': 'audio/wav',
+  '.mp3': 'audio/mpeg',
+  '.mp4': 'video/mp4',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+  '.ttf': 'font/ttf',
+};
+
+const distDir = path.join(__dirname, '..', 'dist');
+let serverPort = 0;
+
+function startLocalServer() {
+  return new Promise((resolve) => {
+    const server = http.createServer((req, res) => {
+      let filePath = path.join(distDir, req.url === '/' ? 'index.html' : req.url);
+      // Remove query strings
+      filePath = filePath.split('?')[0];
+
+      const ext = path.extname(filePath).toLowerCase();
+      const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+
+      fs.readFile(filePath, (err, data) => {
+        if (err) {
+          res.writeHead(404);
+          res.end('Not found');
+          return;
+        }
+        res.writeHead(200, {
+          'Content-Type': contentType,
+          'Cross-Origin-Opener-Policy': 'same-origin',
+          'Cross-Origin-Embedder-Policy': 'require-corp',
+        });
+        res.end(data);
+      });
+    });
+
+    server.listen(0, '127.0.0.1', () => {
+      serverPort = server.address().port;
+      console.log(`Local server running on http://127.0.0.1:${serverPort}`);
+      resolve(serverPort);
+    });
+  });
+}
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -12,8 +69,7 @@ function createWindow() {
     },
   });
 
-  // Load the built Vite app
-  win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
+  win.loadURL(`http://127.0.0.1:${serverPort}/index.html`);
   return win;
 }
 
@@ -52,17 +108,8 @@ if (process.platform === 'darwin') {
   });
 }
 
-app.whenReady().then(() => {
-  // Enable SharedArrayBuffer for FFmpeg WASM
-  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-    callback({
-      responseHeaders: {
-        ...details.responseHeaders,
-        'Cross-Origin-Opener-Policy': ['same-origin'],
-        'Cross-Origin-Embedder-Policy': ['require-corp'],
-      },
-    });
-  });
+app.whenReady().then(async () => {
+  await startLocalServer();
 
   const menu = Menu.buildFromTemplate(menuTemplate);
   Menu.setApplicationMenu(menu);
