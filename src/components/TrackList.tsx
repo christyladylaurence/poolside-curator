@@ -118,26 +118,23 @@ const TrackList: React.FC<TrackListProps> = ({
             onDragEnd={handleDragEnd}
           >
             <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-              {visible.map(t => {
-                const actualIdx = allTracks.findIndex(x => x.id === t.id);
-                return (
-                  <SortableTrackItem
+              {visible.map(t => (
+                  <MemoizedSortableTrack
                     key={t.id}
                     track={t}
-                    displayNum={actualIdx + 1}
-                    isPlaying={playingId === t.id}
+                    allTracks={allTracks}
+                    playingId={playingId}
                     scrubPercent={scrubPercents[t.id] || 0}
-                    onPlay={() => onPlay(t)}
-                    onDelete={() => onDelete(t.id)}
-                    onGenreCycle={() => onGenreCycle(t.id)}
-                    onRename={name => onRename(t.id, name)}
-                    onScrub={pct => onScrub(t, pct)}
-                    onToggleCutoff={() => onToggleCutoff(t.id)}
-                    onToggleChecked={() => onToggleChecked(t.id)}
-                    onCycleEnergy={() => onCycleEnergy(t.id)}
+                    onPlay={onPlay}
+                    onDelete={onDelete}
+                    onGenreCycle={onGenreCycle}
+                    onRename={onRename}
+                    onScrub={onScrub}
+                    onToggleCutoff={onToggleCutoff}
+                    onToggleChecked={onToggleChecked}
+                    onCycleEnergy={onCycleEnergy}
                   />
-                );
-              })}
+              ))}
             </SortableContext>
             <DragOverlay>
               {activeTrack ? (
