@@ -50,6 +50,11 @@ const Index: React.FC = () => {
   });
   const [cpanel, setCpanel] = useState<CommandPanelState>({ open: false, title: '', phase: 'building' });
 
+  // Update document/window title with episode number
+  useEffect(() => {
+    document.title = `Poolside Sessions — Episode ${episodeNumber}`;
+  }, [episodeNumber]);
+
   // Restore video from IndexedDB on mount
   useEffect(() => {
     loadVideo().then(file => {
