@@ -183,7 +183,7 @@ const Index: React.FC = () => {
       setPlayingId(null);
       setNowPlaying(null);
       setScrubPercents({});
-      setIsEnhanced(false);
+      setEnhanceMode('off');
       clearTracks();
     }
   }, [tracks.length]);
@@ -282,25 +282,38 @@ const Index: React.FC = () => {
     setTracks(newTracks);
   }, []);
 
-  // YouTube enhance
   const handleEnhance = useCallback(() => {
-    if (isEnhanced) {
-      setTracks(prev => prev.map(t =>
-        t.originalName ? { ...t, name: t.originalName, originalName: null } : t
-      ));
-      setIsEnhanced(false);
-    } else {
+    if (enhanceMode === 'off') {
+      // First click: standard SEO suffixes
       let lastSuffix = '';
       setTracks(prev => prev.map((t, i) => {
         const cleaned = cleanNameForYouTube(t.name);
-        let suffix = getRotatingSuffix(t.genre, i);
-        if (suffix === lastSuffix) suffix = getRotatingSuffix(t.genre, i + 1);
+        let suffix = getRotatingSuffix(t.genre, i, 'standard');
+        if (suffix === lastSuffix) suffix = getRotatingSuffix(t.genre, i + 1, 'standard');
         lastSuffix = suffix;
-        return { ...t, originalName: t.name, name: `${cleaned} - ${suffix}` };
+        return { ...t, originalName: t.originalName || t.name, name: `${cleaned} - ${suffix}` };
       }));
-      setIsEnhanced(true);
+      setEnhanceMode('standard');
+    } else if (enhanceMode === 'standard') {
+      // Second click: chill/melodic/focus suffixes
+      let lastSuffix = '';
+      setTracks(prev => prev.map((t, i) => {
+        const base = t.originalName || t.name;
+        const cleaned = cleanNameForYouTube(base);
+        let suffix = getRotatingSuffix(t.genre, i, 'chill');
+        if (suffix === lastSuffix) suffix = getRotatingSuffix(t.genre, i + 1, 'chill');
+        lastSuffix = suffix;
+        return { ...t, name: `${cleaned} - ${suffix}` };
+      }));
+      setEnhanceMode('chill');
+    } else {
+      // Third click: undo back to original
+      setTracks(prev => prev.map(t =>
+        t.originalName ? { ...t, name: t.originalName, originalName: null } : t
+      ));
+      setEnhanceMode('off');
     }
-  }, [isEnhanced]);
+  }, [enhanceMode]);
 
   // Build episode
   const handleBuild = useCallback(async () => {
