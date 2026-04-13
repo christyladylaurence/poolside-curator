@@ -101,11 +101,11 @@ export const chillSeoSuffixes: Record<Genre, string[]> = {
 
 export type EnhanceMode = 'off' | 'standard' | 'chill';
 
-export function getRotatingSuffix(genre: Genre, index: number, mode: EnhanceMode = 'standard'): string {
+export function getRotatingSuffix(genre: Genre, _index: number, mode: EnhanceMode = 'standard'): string {
   const pool = mode === 'chill'
     ? (chillSeoSuffixes[genre] || chillSeoSuffixes.dh)
     : (seoSuffixes[genre] || seoSuffixes.dh);
-  return pool[index % pool.length];
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
 export interface YouTubeMetadata {
