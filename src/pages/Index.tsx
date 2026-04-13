@@ -43,7 +43,7 @@ const Index: React.FC = () => {
   const [nowPlaying, setNowPlaying] = useState<string | null>(null);
   const [scrubPercents, setScrubPercents] = useState<Record<string, number>>({});
   const [crossfadeDuration, setCrossfadeDuration] = useState(3);
-  const [isEnhanced, setIsEnhanced] = useState(false);
+  const [enhanceMode, setEnhanceMode] = useState<EnhanceMode>('off');
   const [episodeNumber, setEpisodeNumber] = useState(() => {
     const saved = localStorage.getItem('poolside-episodeNumber');
     return saved ? parseInt(saved, 10) : 1;
