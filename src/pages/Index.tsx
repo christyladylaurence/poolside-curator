@@ -50,10 +50,11 @@ const Index: React.FC = () => {
   });
   const [cpanel, setCpanel] = useState<CommandPanelState>({ open: false, title: '', phase: 'building' });
 
-  // Update document/window title with episode number
+  // Update document/window title with lead instrument
   useEffect(() => {
-    document.title = `Poolside Sessions — Episode ${episodeNumber}`;
-  }, [episodeNumber]);
+    const suffix = leadInstrument.trim() ? ` — ${leadInstrument.trim()}` : '';
+    document.title = `Poolside Sessions${suffix}`;
+  }, [leadInstrument]);
 
   // Restore video from IndexedDB on mount
   useEffect(() => {
