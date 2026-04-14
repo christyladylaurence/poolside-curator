@@ -103,12 +103,13 @@ interface StoredTrack {
   fileType: string;
   originalName?: string | null;
   cutoff?: boolean;
+  diskPath?: string;
 }
 
 export async function saveTracks(tracks: Array<{
   id: string; name: string; raw: string; genre: string;
   date: string; dur: number; file: File;
-  originalName?: string | null; cutoff?: boolean;
+  originalName?: string | null; cutoff?: boolean; diskPath?: string;
 }>): Promise<void> {
   const db = await openDB();
   const tx = db.transaction(TRACKS_STORE, 'readwrite');
@@ -127,6 +128,7 @@ export async function saveTracks(tracks: Array<{
     fileType: t.file.type,
     originalName: t.originalName,
     cutoff: t.cutoff,
+    diskPath: t.diskPath,
   }));
   store.put(entries, 'all-tracks');
   return new Promise((resolve, reject) => {
@@ -138,7 +140,7 @@ export async function saveTracks(tracks: Array<{
 export async function loadTracks(): Promise<Array<{
   id: string; name: string; raw: string; genre: string;
   date: string; dur: number; file: File; url: string;
-  originalName?: string | null; cutoff?: boolean;
+  originalName?: string | null; cutoff?: boolean; diskPath?: string;
 }> | null> {
   try {
     const db = await openDB();
@@ -162,6 +164,7 @@ export async function loadTracks(): Promise<Array<{
             url,
             originalName: e.originalName,
             cutoff: e.cutoff,
+            diskPath: e.diskPath,
           };
         });
         resolve(tracks);
