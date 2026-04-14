@@ -8,7 +8,6 @@ import TrackList from '@/components/TrackList';
 import FooterBar from '@/components/FooterBar';
 import CommandPanel, { CommandPanelState } from '@/components/CommandPanel';
 import { saveVideo, loadVideo, clearVideo, saveTracks, loadTracks, clearTracks } from '@/lib/video-store';
-import { writeBlobToTempWav } from '@/lib/electron-export';
 import {
   Track, Genre, cleanName, cleanNameForYouTube, detectGenre, dateOf,
   fmt, fmtSRT, getResLabel, sortTracksByPrefix, getRotatingSuffix, createWAVFile,
@@ -152,7 +151,7 @@ const Index: React.FC = () => {
     clearVideo();
   }, []);
 
-  // Track loading — sort by prefix at load time
+  // Track loading — sort by prefix at load time, capture diskPath in Electron
   const handleLoadTracks = useCallback((files: FileList) => {
     const newTracks: Track[] = [];
     let loaded = 0;
@@ -162,6 +161,8 @@ const Index: React.FC = () => {
       const url = URL.createObjectURL(file);
       const a = new Audio(url);
       a.onloadedmetadata = () => {
+        // Electron exposes file.path on dropped File objects
+        const diskPath = (file as any).path || undefined;
         newTracks.push({
           id: Math.random().toString(36).slice(2),
           name: cleanName(file.name),
@@ -171,6 +172,7 @@ const Index: React.FC = () => {
           dur: a.duration,
           url,
           file,
+          diskPath,
         });
         loaded++;
         if (loaded === fileArr.length) {
@@ -291,7 +293,6 @@ const Index: React.FC = () => {
 
   const handleEnhance = useCallback(() => {
     if (enhanceMode === 'off') {
-      // First click: standard SEO suffixes
       let lastSuffix = '';
       setTracks(prev => prev.map((t, i) => {
         const cleaned = cleanNameForYouTube(t.name);
@@ -302,7 +303,6 @@ const Index: React.FC = () => {
       }));
       setEnhanceMode('standard');
     } else if (enhanceMode === 'standard') {
-      // Second click: chill/melodic/focus suffixes
       let lastSuffix = '';
       setTracks(prev => prev.map((t, i) => {
         const base = t.originalName || t.name;
@@ -314,7 +314,6 @@ const Index: React.FC = () => {
       }));
       setEnhanceMode('chill');
     } else {
-      // Third click: undo back to original
       setTracks(prev => prev.map(t =>
         t.originalName ? { ...t, name: t.originalName, originalName: null } : t
       ));
@@ -322,133 +321,154 @@ const Index: React.FC = () => {
     }
   }, [enhanceMode]);
 
-  // Build episode
+  // Helper to generate metadata (chapters, SRT, YouTube) without rendering audio
+  const generateMetadata = useCallback((sortedTracks: Track[]) => {
+    const dateLbl = scheduleDate ? scheduleDate.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' }) : undefined;
+    const dateForName = scheduleDate ?? new Date();
+    const today = `${String(dateForName.getDate()).padStart(2, '0')}-${String(dateForName.getMonth() + 1).padStart(2, '0')}-${dateForName.getFullYear()}`;
+
+    // Build chapters
+    let chapterTime = 0;
+    const chapters: string[] = [];
+    const srtEntries: string[] = [];
+    sortedTracks.forEach((t, i) => {
+      const h = Math.floor(chapterTime / 3600);
+      const m = Math.floor((chapterTime % 3600) / 60);
+      const s = Math.floor(chapterTime % 60);
+      const stamp = h > 0
+        ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+        : `${m}:${String(s).padStart(2, '0')}`;
+      chapters.push(`${stamp} ${t.name}`);
+
+      const startS = chapterTime;
+      const endS = chapterTime + t.dur - (i < sortedTracks.length - 1 ? crossfadeDuration : 0);
+      srtEntries.push(`${i + 1}\n${fmtSRT(startS)} --> ${fmtSRT(endS)}\n${t.name}\n`);
+      chapterTime += t.dur - (i < sortedTracks.length - 1 ? crossfadeDuration : 0);
+    });
+
+    const chaptersText = chapters.join('\n');
+
+    // Detect dominant genre
+    const genreCounts: Record<Genre, number> = { dh: 0, lf: 0, hy: 0 };
+    sortedTracks.forEach(t => genreCounts[t.genre]++);
+    const dominantGenre = (Object.entries(genreCounts).sort((a, b) => b[1] - a[1])[0][0]) as Genre;
+
+    // Generate YouTube metadata
+    const ytMeta = generateYouTubeMetadata(
+      sortedTracks,
+      dominantGenre,
+      crossfadeDuration,
+      episodeNumber,
+      leadInstrument.trim() || undefined,
+      scheduleDate,
+      chaptersText,
+    );
+
+    return { dateLbl, today, chaptersText, srtEntries, ytMeta };
+  }, [crossfadeDuration, episodeNumber, leadInstrument, scheduleDate]);
+
+  // Build episode — now generates metadata only (no audio rendering)
   const handleBuild = useCallback(async () => {
     if (!tracks.length) return;
     const sortedTracks = sortTracksByPrefix(tracks);
 
-    const dateLbl = scheduleDate ? scheduleDate.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' }) : undefined;
-    setCpanel({ open: true, title: 'Building episode...', phase: 'building', scheduleDate: dateLbl, leadInstrument: leadInstrument.trim() || undefined, progressText: 'Fetching and decoding tracks...', progressPct: 0 });
+    const { dateLbl, today, chaptersText, srtEntries, ytMeta } = generateMetadata(sortedTracks);
 
-    try {
-      if (!audioContextRef.current) audioContextRef.current = new AudioContext();
+    setCpanel({ open: true, title: 'Building episode...', phase: 'building', scheduleDate: dateLbl, leadInstrument: leadInstrument.trim() || undefined, progressText: 'Generating metadata...', progressPct: 50 });
 
-      let totalDuration = 0;
-      sortedTracks.forEach((t, i) => {
-        totalDuration += t.dur;
-        if (i < sortedTracks.length - 1) totalDuration -= crossfadeDuration;
-      });
+    // Small delay for UX
+    await new Promise(r => setTimeout(r, 300));
 
-      const offlineCtx = new OfflineAudioContext(2, Math.ceil(totalDuration * 44100), 44100);
-      const masterGain = offlineCtx.createGain();
-      masterGain.connect(offlineCtx.destination);
+    // Increment episode number for next build
+    const nextEp = episodeNumber + 1;
+    setEpisodeNumber(nextEp);
+    localStorage.setItem('poolside-episodeNumber', String(nextEp));
 
-      const decodedTracks: AudioBuffer[] = [];
-      for (let i = 0; i < sortedTracks.length; i++) {
-        setCpanel(prev => ({ ...prev, progressText: `Decoding track ${i + 1} of ${sortedTracks.length}...`, progressPct: (i / sortedTracks.length) * 50 }));
-        const resp = await fetch(sortedTracks[i].url);
-        const ab = await resp.arrayBuffer();
-        const decoded = await audioContextRef.current!.decodeAudioData(ab);
-        decodedTracks.push(decoded);
-      }
+    const instrSuffix = leadInstrument.trim() ? '-' + leadInstrument.trim().toLowerCase().replace(/\s+/g, '-') : '';
 
-      let currentTime = 0;
-      for (let i = 0; i < decodedTracks.length; i++) {
-        setCpanel(prev => ({ ...prev, progressText: `Stitching track ${i + 1} of ${sortedTracks.length}...`, progressPct: 50 + (i / sortedTracks.length) * 50 }));
+    // For web builds (non-Electron), we still render WAV for download
+    let wavBlob: Blob | undefined;
+    let wavFilename: string | undefined;
+    if (!window.electronAPI) {
+      try {
+        setCpanel(prev => ({ ...prev, progressText: 'Rendering audio...', progressPct: 10 }));
+        if (!audioContextRef.current) audioContextRef.current = new AudioContext();
 
-        const source = offlineCtx.createBufferSource();
-        source.buffer = decodedTracks[i];
-        const gain = offlineCtx.createGain();
-        source.connect(gain);
-        gain.connect(masterGain);
+        let totalDuration = 0;
+        sortedTracks.forEach((t, i) => {
+          totalDuration += t.dur;
+          if (i < sortedTracks.length - 1) totalDuration -= crossfadeDuration;
+        });
 
-        if (i > 0) {
-          gain.gain.setValueAtTime(0, currentTime);
-          gain.gain.linearRampToValueAtTime(1, currentTime + crossfadeDuration);
-        } else {
-          gain.gain.setValueAtTime(1, 0);
+        const offlineCtx = new OfflineAudioContext(2, Math.ceil(totalDuration * 44100), 44100);
+        const masterGain = offlineCtx.createGain();
+        masterGain.connect(offlineCtx.destination);
+
+        const decodedTracks: AudioBuffer[] = [];
+        for (let i = 0; i < sortedTracks.length; i++) {
+          setCpanel(prev => ({ ...prev, progressText: `Decoding track ${i + 1} of ${sortedTracks.length}...`, progressPct: (i / sortedTracks.length) * 50 }));
+          const resp = await fetch(sortedTracks[i].url);
+          const ab = await resp.arrayBuffer();
+          const decoded = await audioContextRef.current!.decodeAudioData(ab);
+          decodedTracks.push(decoded);
         }
 
-        const trackDuration = decodedTracks[i].duration;
-        const fadeOutStart = currentTime + trackDuration - crossfadeDuration;
-        if (i < decodedTracks.length - 1) {
-          gain.gain.setValueAtTime(1, fadeOutStart);
-          gain.gain.linearRampToValueAtTime(0, fadeOutStart + crossfadeDuration);
+        let currentTime = 0;
+        for (let i = 0; i < decodedTracks.length; i++) {
+          setCpanel(prev => ({ ...prev, progressText: `Stitching track ${i + 1} of ${sortedTracks.length}...`, progressPct: 50 + (i / sortedTracks.length) * 40 }));
+
+          const source = offlineCtx.createBufferSource();
+          source.buffer = decodedTracks[i];
+          const gain = offlineCtx.createGain();
+          source.connect(gain);
+          gain.connect(masterGain);
+
+          if (i > 0) {
+            gain.gain.setValueAtTime(0, currentTime);
+            gain.gain.linearRampToValueAtTime(1, currentTime + crossfadeDuration);
+          } else {
+            gain.gain.setValueAtTime(1, 0);
+          }
+
+          const trackDuration = decodedTracks[i].duration;
+          const fadeOutStart = currentTime + trackDuration - crossfadeDuration;
+          if (i < decodedTracks.length - 1) {
+            gain.gain.setValueAtTime(1, fadeOutStart);
+            gain.gain.linearRampToValueAtTime(0, fadeOutStart + crossfadeDuration);
+          }
+
+          source.start(currentTime);
+          currentTime += trackDuration - (i < decodedTracks.length - 1 ? crossfadeDuration : 0);
         }
 
-        source.start(currentTime);
-        currentTime += trackDuration - (i < decodedTracks.length - 1 ? crossfadeDuration : 0);
+        setCpanel(prev => ({ ...prev, progressText: 'Rendering audio...' }));
+        const rendered = await offlineCtx.startRendering();
+        const wavData = createWAVFile(rendered);
+        wavBlob = new Blob([wavData], { type: 'audio/wav' });
+        wavFilename = `poolside-episode-${today}${instrSuffix}.wav`;
+      } catch (err: any) {
+        setCpanel({ open: true, title: 'Build failed', phase: 'error', scheduleDate: dateLbl, leadInstrument: leadInstrument.trim() || undefined, errorMsg: err.message });
+        return;
       }
-
-      setCpanel(prev => ({ ...prev, progressText: 'Rendering audio...' }));
-      const rendered = await offlineCtx.startRendering();
-      const wavData = createWAVFile(rendered);
-      const wavBlob = new Blob([wavData], { type: 'audio/wav' });
-      const dateForName = scheduleDate ?? new Date();
-      const today = `${String(dateForName.getDate()).padStart(2, '0')}-${String(dateForName.getMonth() + 1).padStart(2, '0')}-${dateForName.getFullYear()}`;
-
-      // Build chapters
-      let chapterTime = 0;
-      const chapters: string[] = [];
-      const srtEntries: string[] = [];
-      sortedTracks.forEach((t, i) => {
-        const h = Math.floor(chapterTime / 3600);
-        const m = Math.floor((chapterTime % 3600) / 60);
-        const s = Math.floor(chapterTime % 60);
-        const stamp = h > 0
-          ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-          : `${m}:${String(s).padStart(2, '0')}`;
-        chapters.push(`${stamp} ${t.name}`);
-
-        const startS = chapterTime;
-        const endS = chapterTime + t.dur - (i < sortedTracks.length - 1 ? crossfadeDuration : 0);
-        srtEntries.push(`${i + 1}\n${fmtSRT(startS)} --> ${fmtSRT(endS)}\n${t.name}\n`);
-        chapterTime += t.dur - (i < sortedTracks.length - 1 ? crossfadeDuration : 0);
-      });
-
-      const chaptersText = chapters.join('\n');
-
-      // Detect dominant genre
-      const genreCounts: Record<Genre, number> = { dh: 0, lf: 0, hy: 0 };
-      sortedTracks.forEach(t => genreCounts[t.genre]++);
-      const dominantGenre = (Object.entries(genreCounts).sort((a, b) => b[1] - a[1])[0][0]) as Genre;
-
-      // Generate YouTube metadata
-      const ytMeta = generateYouTubeMetadata(
-        sortedTracks,
-        dominantGenre,
-        crossfadeDuration,
-        episodeNumber,
-        leadInstrument.trim() || undefined,
-        scheduleDate,
-        chaptersText,
-      );
-
-      // Increment episode number for next build
-      const nextEp = episodeNumber + 1;
-      setEpisodeNumber(nextEp);
-      localStorage.setItem('poolside-episodeNumber', String(nextEp));
-
-      setCpanel({
-        open: true,
-        title: 'Episode ready!',
-        phase: 'ready',
-        scheduleDate: dateLbl,
-        leadInstrument: leadInstrument.trim() || undefined,
-        episodeNumber,
-        tracks: sortedTracks,
-        chapters: chaptersText,
-        srtText: srtEntries.join('\n'),
-        wavBlob,
-        wavFilename: `poolside-episode-${today}${leadInstrument.trim() ? '-' + leadInstrument.trim().toLowerCase().replace(/\s+/g, '-') : ''}.wav`,
-        hasVideo: !!videoFile,
-        videoLabel: videoRes ? `${videoRes.label} (${videoRes.w}×${videoRes.h})` : 'unknown res',
-        ytMeta,
-      });
-    } catch (err: any) {
-      setCpanel({ open: true, title: 'Build failed', phase: 'error', scheduleDate: dateLbl, leadInstrument: leadInstrument.trim() || undefined, errorMsg: err.message });
     }
-  }, [tracks, crossfadeDuration, videoFile, videoRes, leadInstrument, scheduleDate, episodeNumber]);
+
+    setCpanel({
+      open: true,
+      title: 'Episode ready!',
+      phase: 'ready',
+      scheduleDate: dateLbl,
+      leadInstrument: leadInstrument.trim() || undefined,
+      episodeNumber,
+      tracks: sortedTracks,
+      chapters: chaptersText,
+      srtText: srtEntries.join('\n'),
+      wavBlob,
+      wavFilename,
+      hasVideo: !!videoFile,
+      videoLabel: videoRes ? `${videoRes.label} (${videoRes.w}×${videoRes.h})` : 'unknown res',
+      ytMeta,
+    });
+  }, [tracks, crossfadeDuration, videoFile, videoRes, leadInstrument, scheduleDate, episodeNumber, generateMetadata]);
 
   // Download helpers
   const downloadBlob = (blob: Blob, filename: string) => {
@@ -479,17 +499,19 @@ const Index: React.FC = () => {
     }
   }, [cpanel.srtText]);
 
+  // Build MP4 — Electron: send manifest to ffmpeg; Web: use ffmpeg.wasm
   const handleBuildMp4 = useCallback(async () => {
-    if (!cpanel.wavBlob || !videoFile) return;
+    if (!videoFile) return;
 
     const dateForName2 = scheduleDate ?? new Date();
     const today = `${String(dateForName2.getDate()).padStart(2, '0')}-${String(dateForName2.getMonth() + 1).padStart(2, '0')}-${dateForName2.getFullYear()}`;
     const instrSuffix2 = leadInstrument.trim() ? '-' + leadInstrument.trim().toLowerCase().replace(/\s+/g, '-') : '';
     const defaultFilename = `poolside-episode-${today}${instrSuffix2}.mp4`;
 
-    // ── Electron native path ──────────────────────────────────
+    // ── Electron native path — ffmpeg does all mixing ──────────
     if (window.electronAPI) {
       const api = window.electronAPI;
+      const sortedTracks = sortTracksByPrefix(tracks);
 
       setCpanel(prev => ({
         ...prev,
@@ -512,28 +534,39 @@ const Index: React.FC = () => {
           throw new Error('Cannot access video file path. Please re-drop the video file.');
         }
 
-        // 3. Write WAV to temp file without duplicating the full buffer in memory
-        setCpanel(prev => ({ ...prev, mp4Status: 'Writing audio to disk… 0%', mp4ProgPct: 8 }));
-        const audioPath = await writeBlobToTempWav(api, cpanel.wavBlob!, (percent) => {
-          setCpanel(prev => ({
-            ...prev,
-            mp4Status: `Writing audio to disk… ${percent}%`,
-            mp4ProgPct: 8 + Math.round(percent * 0.02),
-          }));
-        });
+        // 3. Resolve disk paths for all tracks
+        setCpanel(prev => ({ ...prev, mp4Status: 'Preparing track files…', mp4ProgPct: 5 }));
+        const trackPaths: { path: string }[] = [];
+        for (let i = 0; i < sortedTracks.length; i++) {
+          const t = sortedTracks[i];
+          if (t.diskPath) {
+            trackPaths.push({ path: t.diskPath });
+          } else {
+            // No disk path — write File blob to temp
+            setCpanel(prev => ({ ...prev, mp4Status: `Writing track ${i + 1} to disk…`, mp4ProgPct: 5 + (i / sortedTracks.length) * 5 }));
+            const ab = await t.file.arrayBuffer();
+            const tempPath = await api.saveTrackToTemp({ blob: ab, fileName: t.file.name });
+            trackPaths.push({ path: tempPath });
+          }
+        }
 
         // 4. Listen for progress updates
-        const cleanupProgress = api.onMuxProgress(({ percent, timeStr }: { percent: number; timeStr: string }) => {
+        const cleanupProgress = api.onBuildEpisodeProgress(({ percent, timeStr }) => {
           setCpanel(prev => ({
             ...prev,
-            mp4Status: `Muxing video + audio… ${percent}% (${timeStr})`,
+            mp4Status: `Building MP4… ${percent}% (${timeStr})`,
             mp4ProgPct: Math.min(98, 10 + percent * 0.88),
           }));
         });
 
-        // 5. Mux with native ffmpeg
-        setCpanel(prev => ({ ...prev, mp4Status: 'Muxing video + audio… 0%', mp4ProgPct: 10 }));
-        const result = await api.muxVideo({ videoPath, audioPath, outputPath });
+        // 5. Send manifest to main process — ffmpeg handles crossfading, loudnorm, muxing
+        setCpanel(prev => ({ ...prev, mp4Status: 'Building MP4… 0%', mp4ProgPct: 10 }));
+        const result = await api.buildEpisode({
+          videoPath,
+          outputPath,
+          crossfadeSeconds: crossfadeDuration,
+          tracks: trackPaths,
+        });
         cleanupProgress();
 
         if (result.success) {
@@ -561,11 +594,12 @@ const Index: React.FC = () => {
     }
 
     // ── Web fallback (ffmpeg.wasm) ────────────────────────────
+    if (!cpanel.wavBlob) return;
+
     // Warn for long mixes
     const totalDur = (cpanel.tracks || []).reduce((sum, t, i, arr) => sum + t.dur - (i < arr.length - 1 ? 3 : 0), 0);
     if (totalDur > 30 * 60) {
       console.warn('Mix is over 30 minutes — for reliable MP4 builds, use the desktop app.');
-      // Show warning but don't block
       setCpanel(prev => ({
         ...prev,
         mp4Status: '⚠️ Long mix detected — desktop app recommended for reliable builds. Attempting anyway…',
@@ -668,11 +702,10 @@ const Index: React.FC = () => {
         mp4ProgPct: undefined,
       }));
     }
-  }, [cpanel.wavBlob, cpanel.tracks, videoFile, scheduleDate, leadInstrument]);
+  }, [cpanel.wavBlob, cpanel.tracks, videoFile, tracks, crossfadeDuration, scheduleDate, leadInstrument]);
 
   const handleDownloadMp4 = useCallback(() => {
     if (cpanel.mp4Url && cpanel.mp4Filename) {
-      // Download from cloud (more reliable, works even if tab was refreshed)
       const a = document.createElement('a');
       a.href = cpanel.mp4Url;
       a.download = cpanel.mp4Filename;

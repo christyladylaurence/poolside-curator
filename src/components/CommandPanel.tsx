@@ -185,7 +185,7 @@ const CommandPanel: React.FC<CommandPanelProps> = ({
                 </div>
               </div>
 
-              {state.hasVideo && !state.mp4Blob && !state.mp4Building && (
+              {state.hasVideo && !state.mp4Blob && !state.mp4Building && !(state.mp4Status?.startsWith('✅')) && (
                 <button
                   className="download-btn mp4-btn"
                   onClick={onBuildMp4}
@@ -211,9 +211,12 @@ const CommandPanel: React.FC<CommandPanelProps> = ({
                 </button>
               )}
 
-              <button className="download-btn" onClick={onDownloadWav}>
-                ⬇ Download audio only (WAV)
-              </button>
+              {/* WAV download only available on web (non-Electron) */}
+              {state.wavBlob && (
+                <button className="download-btn" onClick={onDownloadWav}>
+                  ⬇ Download audio only (WAV)
+                </button>
+              )}
             </>
           )}
         </div>

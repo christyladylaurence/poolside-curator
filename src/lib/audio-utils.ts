@@ -13,6 +13,7 @@ export interface Track {
   cutoff?: boolean;
   checked?: boolean;
   energy?: 0 | 1 | 2 | 3;
+  diskPath?: string;
 }
 
 export function cleanName(n: string): string {

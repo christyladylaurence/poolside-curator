@@ -3,12 +3,7 @@ const path = require('path');
 const http = require('http');
 const fs = require('fs');
 const os = require('os');
-const { spawn } = require('child_process');
-const {
-  appendTempWavChunk,
-  createTempWavFile,
-  deleteTempWavFile,
-} = require('./temp-file.cjs');
+const { spawn, execFile } = require('child_process');
 
 const MIME_TYPES = {
   '.html': 'text/html',
@@ -30,6 +25,7 @@ const MIME_TYPES = {
 };
 
 const distDir = path.join(__dirname, '..', 'dist');
+const tempDir = path.resolve(os.tmpdir());
 let serverPort = 0;
 
 function startLocalServer() {
@@ -92,102 +88,53 @@ function createWindow() {
   return win;
 }
 
-// ── IPC Handlers ──────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────
 
-ipcMain.handle('create-temp-wav-file', async () => createTempWavFile());
-
-ipcMain.handle('append-temp-wav-chunk', async (_event, { filePath, chunk }) => {
-  await appendTempWavChunk(filePath, chunk);
-  return { success: true };
-});
-
-ipcMain.handle('delete-temp-wav-file', async (_event, filePath) => {
-  await deleteTempWavFile(filePath);
-  return { success: true };
-});
-
-/**
- * mux-video: Spawns native ffmpeg to mux video + audio into MP4.
- * Parses stderr for progress and sends updates to renderer.
- */
-ipcMain.handle('mux-video', async (event, { videoPath, audioPath, outputPath }) => {
+function checkFfmpeg() {
   return new Promise((resolve) => {
-    // First, get total duration from the audio file for progress calculation
-    const probe = spawn('ffprobe', [
-      '-v', 'error',
-      '-show_entries', 'format=duration',
-      '-of', 'default=noprint_wrappers=1:nokey=1',
-      audioPath,
-    ]);
-
-    let durationStr = '';
-    probe.stdout.on('data', (d) => { durationStr += d.toString(); });
-
-    probe.on('close', () => {
-      const totalDuration = parseFloat(durationStr.trim()) || 0;
-
-      const args = [
-        '-stream_loop', '-1',
-        '-i', videoPath,
-        '-i', audioPath,
-        '-c:v', 'copy',
-        '-c:a', 'aac',
-        '-b:a', '320k',
-        '-shortest',
-        '-movflags', '+faststart',
-        '-y',
-        outputPath,
-      ];
-
-      const ffmpeg = spawn('ffmpeg', args);
-
-      ffmpeg.stderr.on('data', (data) => {
-        const str = data.toString();
-        // Parse time=HH:MM:SS.xx from ffmpeg output
-        const match = str.match(/time=(\d{2}):(\d{2}):(\d{2})\.(\d{2})/);
-        if (match && totalDuration > 0) {
-          const hours = parseInt(match[1], 10);
-          const mins = parseInt(match[2], 10);
-          const secs = parseInt(match[3], 10);
-          const cs = parseInt(match[4], 10);
-          const currentTime = hours * 3600 + mins * 60 + secs + cs / 100;
-          const percent = Math.min(99, Math.round((currentTime / totalDuration) * 100));
-          const timeStr = `${match[1]}:${match[2]}:${match[3]}`;
-
-          try {
-            event.sender.send('mux-progress', { percent, timeStr });
-          } catch (e) {
-            // sender may be destroyed
-          }
-        }
-      });
-
-      ffmpeg.on('close', (code) => {
-        // Clean up temp WAV
-        try { fs.unlinkSync(audioPath); } catch (e) { /* ignore */ }
-
-        if (code === 0) {
-          try {
-            event.sender.send('mux-progress', { percent: 100, timeStr: 'done' });
-          } catch (e) { /* ignore */ }
-          resolve({ success: true });
-        } else {
-          resolve({ success: false, error: `ffmpeg exited with code ${code}` });
-        }
-      });
-
-      ffmpeg.on('error', (err) => {
-        // Clean up temp WAV
-        try { fs.unlinkSync(audioPath); } catch (e) { /* ignore */ }
-        resolve({ success: false, error: err.message });
-      });
-    });
-
-    probe.on('error', () => {
-      // ffprobe not found, try without progress
-      resolve({ success: false, error: 'ffprobe not found. Make sure ffmpeg is installed and on your PATH.' });
+    execFile('which', ['ffmpeg'], (err) => {
+      resolve(!err);
     });
   });
+}
+
+function getTempPath(fileName) {
+  const safe = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+  return path.join(tempDir, `poolside-${Date.now()}-${safe}`);
+}
+
+/**
+ * Build the ffmpeg filter_complex string for N tracks with pairwise crossfades + loudnorm.
+ * Inputs are numbered 1..N (0 is video).
+ */
+function buildFilterComplex(trackCount, crossfadeSec) {
+  if (trackCount === 1) {
+    return { filter: '[1:a]loudnorm=I=-14:TP=-1.5:LRA=11[out]', outputLabel: '[out]' };
+  }
+
+  const parts = [];
+  let prevLabel = '[1:a]';
+
+  for (let i = 2; i <= trackCount; i++) {
+    const outLabel = i === trackCount ? '[amix]' : `[a${i}]`;
+    parts.push(`${prevLabel}[${i}:a]acrossfade=d=${crossfadeSec}:c1=tri:c2=tri${outLabel}`);
+    prevLabel = outLabel;
+  }
+
+  parts.push(`${prevLabel.replace(';', '')}loudnorm=I=-14:TP=-1.5:LRA=11[out]`);
+
+  return { filter: parts.join('; '), outputLabel: '[out]' };
+}
+
+// ── IPC Handlers ──────────────────────────────────────────
+
+/**
+ * save-track-to-temp: Write an ArrayBuffer to a temp file and return the path.
+ */
+ipcMain.handle('save-track-to-temp', async (_event, { blob, fileName }) => {
+  const tempPath = getTempPath(fileName);
+  await fs.promises.writeFile(tempPath, Buffer.from(blob));
+  return tempPath;
 });
 
 /**
@@ -199,6 +146,112 @@ ipcMain.handle('show-save-dialog', async (_event, defaultName) => {
     filters: [{ name: 'MP4 Video', extensions: ['mp4'] }],
   });
   return canceled ? null : filePath;
+});
+
+/**
+ * build-episode: Construct and run an ffmpeg command to mix all tracks
+ * with crossfades and loudnorm, muxed with the looping background video.
+ */
+ipcMain.handle('build-episode', async (event, manifest) => {
+  const { videoPath, outputPath, crossfadeSeconds, tracks } = manifest;
+
+  // 1. Check ffmpeg is available
+  const hasFfmpeg = await checkFfmpeg();
+  if (!hasFfmpeg) {
+    return {
+      success: false,
+      error: 'ffmpeg not found. Please install it:\n\n  brew install ffmpeg\n\nThen restart the app and try again.',
+    };
+  }
+
+  // 2. Get total duration for progress calculation
+  let totalDuration = 0;
+  for (const t of tracks) {
+    try {
+      const dur = await new Promise((resolve) => {
+        const probe = spawn('ffprobe', [
+          '-v', 'error',
+          '-show_entries', 'format=duration',
+          '-of', 'default=noprint_wrappers=1:nokey=1',
+          t.path,
+        ]);
+        let out = '';
+        probe.stdout.on('data', (d) => { out += d.toString(); });
+        probe.on('close', () => resolve(parseFloat(out.trim()) || 0));
+        probe.on('error', () => resolve(0));
+      });
+      totalDuration += dur;
+    } catch {
+      // skip
+    }
+  }
+  // Subtract crossfades
+  totalDuration -= Math.max(0, (tracks.length - 1) * crossfadeSeconds);
+
+  // 3. Build ffmpeg command
+  const { filter, outputLabel } = buildFilterComplex(tracks.length, crossfadeSeconds);
+
+  const args = [
+    '-stream_loop', '-1',
+    '-i', videoPath,
+  ];
+
+  for (const t of tracks) {
+    args.push('-i', t.path);
+  }
+
+  args.push(
+    '-filter_complex', filter,
+    '-map', '0:v',
+    '-map', outputLabel,
+    '-c:v', 'copy',
+    '-c:a', 'aac',
+    '-b:a', '320k',
+    '-shortest',
+    '-movflags', '+faststart',
+    '-y',
+    outputPath,
+  );
+
+  // 4. Spawn ffmpeg
+  return new Promise((resolve) => {
+    const ffmpeg = spawn('ffmpeg', args);
+
+    ffmpeg.stderr.on('data', (data) => {
+      const str = data.toString();
+      const match = str.match(/time=(\d{2}):(\d{2}):(\d{2})\.(\d{2})/);
+      if (match && totalDuration > 0) {
+        const hours = parseInt(match[1], 10);
+        const mins = parseInt(match[2], 10);
+        const secs = parseInt(match[3], 10);
+        const cs = parseInt(match[4], 10);
+        const currentTime = hours * 3600 + mins * 60 + secs + cs / 100;
+        const percent = Math.min(99, Math.round((currentTime / totalDuration) * 100));
+        const timeStr = `${match[1]}:${match[2]}:${match[3]}`;
+
+        try {
+          event.sender.send('build-episode-progress', { percent, timeStr });
+        } catch (e) {
+          // sender may be destroyed
+        }
+      }
+    });
+
+    ffmpeg.on('close', (code) => {
+      if (code === 0) {
+        try {
+          event.sender.send('build-episode-progress', { percent: 100, timeStr: 'done' });
+        } catch (e) { /* ignore */ }
+        resolve({ success: true });
+      } else {
+        resolve({ success: false, error: `ffmpeg exited with code ${code}` });
+      }
+    });
+
+    ffmpeg.on('error', (err) => {
+      resolve({ success: false, error: err.message });
+    });
+  });
 });
 
 // ── Menu ──────────────────────────────────────────────────
